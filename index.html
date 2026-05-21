@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.001 -->
+<!-- TI4 Tracker 1.002 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -223,7 +223,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.001</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.002</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -235,7 +235,7 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.001</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.002</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
@@ -2125,6 +2125,7 @@ window.closeFactionCard = function() {
 
 window.App = {
   async saveSupabaseConfig() {
+    alert("Button tapped! App=" + (typeof window.App) + " initSync=" + (typeof window.initSync));
     var url = document.getElementById('inp-url').value.trim();
     var key = document.getElementById('inp-key').value.trim();
     if (!url || !key) { alert('Please enter both URL and key'); return; }
