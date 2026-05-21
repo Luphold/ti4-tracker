@@ -3490,7 +3490,7 @@ var timerInterval = null;
 
 async function init() {
   try {
-    var settings = await getSettings();
+    var settings = await window.getSettings();
     var url = (settings.supabaseUrl || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
     var key = settings.supabaseKey || '';
     if (url && key) {
@@ -3500,7 +3500,7 @@ async function init() {
       document.getElementById('supabase-setup').style.display = 'none';
       // Then init Supabase in background
       try {
-        await initSync({ url: url, anonKey: key });
+        await window.initSync({ url: url, anonKey: key });
       } catch(e) {
         console.error('[init] supabase failed:', e);
         // Still show configured screen — user can try entering game
@@ -3612,10 +3612,9 @@ window.App = {
     var btn = document.getElementById('btn-save-connect');
     if (btn) { btn.textContent = 'Connecting…'; btn.disabled = true; }
     try {
-      // Save credentials first so they persist even if connection fails
-      await setSetting('supabaseUrl', url);
-      await setSetting('supabaseKey', key);
-      await initSync({ url: url, anonKey: key });
+      await window.initSync({ url: url, anonKey: key });
+      await window.setSetting('supabaseUrl', url);
+      await window.setSetting('supabaseKey', key);
       document.getElementById('supabase-url-display').textContent = url;
       document.getElementById('supabase-configured').style.display = '';
       document.getElementById('supabase-setup').style.display = 'none';
@@ -3628,16 +3627,16 @@ window.App = {
 
   async enterAsAdmin() {
     isAdmin = true;
-    initGame(true, function(s) { renderAll(); });
-    var code = generateRoomCode();
-    var draft = await loadDraft();
+    window.initGame(true, function(s) { renderAll(); });
+    var code = window.generateRoomCode();
+    var draft = await window.loadDraft();
     if (draft && draft.started && !draft.ended) {
-      if (confirm('Resume saved game?')) { setState(draft); } 
-      else { await clearDraft(); setState(defaultState()); }
-    } else { setState(defaultState()); }
+      if (confirm('Resume saved game?')) { window.setState(draft); } 
+      else { await window.clearDraft(); window.setState(window.defaultState()); }
+    } else { window.setState(window.defaultState()); }
     enterGame(code);
-    await joinRoom(code, true, {
-      onConnect: async function() { updateConnDot(true); await broadcastState(getState()); },
+    await window.joinRoom(code, true, {
+      onConnect: async function() { updateConnDot(true); await window.broadcastState(window.getState()); },
       onDisconnect: function() { updateConnDot(false); },
     });
   },
@@ -3648,9 +3647,9 @@ window.App = {
     var code = document.getElementById('inp-room-code').value.trim().toUpperCase();
     if (code.length < 4) { alert('Enter a valid room code'); return; }
     isAdmin = false;
-    await clearDraft();
-    setState(defaultState());
-    initGame(false, function(s) { renderAll(); });
+    await window.clearDraft();
+    window.setState(window.defaultState());
+    window.initGame(false, function(s) { renderAll(); });
     enterGame(code);
     var scoreEl = document.getElementById('score-content');
     var logLines = [];
@@ -3660,67 +3659,67 @@ window.App = {
       if (scoreEl) scoreEl.innerHTML = '<div class="panel" style="font-family:monospace;font-size:12px;line-height:2"><div class="cinzel text-gold mb-8">Connecting to ' + code + '…</div>' + logLines.join('<br>') + '</div>';
     }
     try {
-      await joinRoom(code, false, {
+      await window.joinRoom(code, false, {
         onConnect: function() { updateConnDot(true); },
         onDisconnect: function() { updateConnDot(false); },
         onState: function(s) {
           if (!s) return;
-          setState(s); renderAll();
+          window.setState(s); renderAll();
         }
       });
     } catch(e) { console.error('[guest]', e); }
   },
 
   addPlayer: function() {
-    var s = getState();
+    var s = window.getState();
     if (s.started) return;
     if (s.players.length >= 8) { alert('Maximum 8 players'); return; }
     var colors = ['#e74c3c','#2980b9','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#16a085'];
     var used = s.players.map(function(p) { return p.color; });
     var color = colors.find(function(c) { return !used.includes(c); }) || '#888';
-    var players = s.players.concat([defaultPlayer('Player ' + (s.players.length+1), FACTIONS[s.players.length % FACTIONS.length], color)]);
-    setState(Object.assign({}, s, {players: players}));
-    saveDraft(getState());
+    var players = s.players.concat([window.defaultPlayer('Player ' + (s.players.length+1), FACTIONS[s.players.length % FACTIONS.length], color)]);
+    window.setState(Object.assign({}, s, {players: players}));
+    window.saveDraft(window.getState());
     renderSetup();
   },
 
   removePlayer: function(i) {
-    var s = getState();
+    var s = window.getState();
     if (s.started) return;
-    setState(Object.assign({}, s, {players: s.players.filter(function(_,idx) { return idx!==i; })}));
-    saveDraft(getState()); renderSetup();
+    window.setState(Object.assign({}, s, {players: s.players.filter(function(_,idx) { return idx!==i; })}));
+    window.saveDraft(window.getState()); renderSetup();
   },
 
   updatePlayerField: function(i, field, value) {
-    if (field === 'faction' && getState().started) return;
-    var s = getState();
+    if (field === 'faction' && window.getState().started) return;
+    var s = window.getState();
     var players = s.players.map(function(p,idx) { return idx===i ? Object.assign({},p,{[field]:value}) : p; });
-    setState(Object.assign({}, s, {players: players}));
-    saveDraft(getState());
+    window.setState(Object.assign({}, s, {players: players}));
+    window.saveDraft(window.getState());
   },
 
   setVpGoal: async function(val) {
-    var s = getState();
-    setState(Object.assign({}, s, {vpGoal: +val}));
-    saveDraft(getState());
-    if (isAdmin) await broadcastState(getState());
+    var s = window.getState();
+    window.setState(Object.assign({}, s, {vpGoal: +val}));
+    window.saveDraft(window.getState());
+    if (isAdmin) await window.broadcastState(window.getState());
   },
 
   async startGame() {
-    var s = getState();
+    var s = window.getState();
     if (s.players.length < 2) { alert('At least 2 players required'); return; }
-    await startGame();
+    await window.startGame();
     this.showNav('score'); renderAll();
   },
 
-  vpPlus: async function(i) { if (!isAdmin || getState().ended) return; await setVP(i,1); renderAll(); },
-  vpMinus: async function(i) { if (!isAdmin || getState().ended) return; await setVP(i,-1); renderAll(); },
-  nextRound: async function() { if (!isAdmin || getState().ended) return; await nextRound(); renderAll(); },
+  vpPlus: async function(i) { if (!isAdmin || window.getState().ended) return; await window.setVP(i,1); renderAll(); },
+  vpMinus: async function(i) { if (!isAdmin || window.getState().ended) return; await window.setVP(i,-1); renderAll(); },
+  nextRound: async function() { if (!isAdmin || window.getState().ended) return; await window.nextRound(); renderAll(); },
 
   async togglePause() {
     if (!isAdmin) return;
-    await togglePause();
-    var s = getState();
+    await window.togglePause();
+    var s = window.getState();
     var overlay = document.getElementById('pause-overlay');
     var btn = document.getElementById('pause-btn');
     if (s.timer.paused) { if(overlay) overlay.classList.add('open'); if(btn) btn.textContent='▶'; }
@@ -3729,32 +3728,32 @@ window.App = {
   },
 
   async endGame() {
-    if (!isAdmin || getState().ended) return;
+    if (!isAdmin || window.getState().ended) return;
     if (!confirm('End game and save results?')) return;
-    var s = getState();
+    var s = window.getState();
     var winner = s.players.slice().sort(function(a,b){return b.vp-a.vp;})[0];
-    await endGame(winner ? winner.name : null);
+    await window.endGame(winner ? winner.name : null);
     renderAll();
     alert('Game saved · Winner: ' + (winner ? winner.name : '—'));
   },
 
   async newGame() {
     if (!confirm('Start a new game? Current game is saved.')) return;
-    await clearDraft();
-    setState(defaultState());
-    await broadcastState(getState());
+    await window.clearDraft();
+    window.setState(window.defaultState());
+    await window.broadcastState(window.getState());
     this.showNav('setup'); renderAll();
   },
 
   async forceSync() {
     if (!isAdmin) return;
-    await broadcastState(getState());
+    await window.broadcastState(window.getState());
     alert('✓ State pushed to DB');
   },
 
   async deleteHistory(id, el) {
     if (!confirm('Delete this game?')) return;
-    await deleteHistoryEntry(id);
+    await window.deleteHistoryEntry(id);
     el.closest('.history-card').remove();
   },
 
@@ -3784,8 +3783,8 @@ window.App = {
     renderTech();
   },
 
-  async addTech(name) { if (!isAdmin) return; await addTech(techPlayerIdx, name); renderTech(); },
-  async removeTech(name) { if (!isAdmin) return; await removeTech(techPlayerIdx, name); renderTech(); },
+  async addTech(name) { if (!isAdmin) return; await window.addTech(techPlayerIdx, name); renderTech(); },
+  async removeTech(name) { if (!isAdmin) return; await window.removeTech(techPlayerIdx, name); renderTech(); },
   openFactionCard: window.openFactionCard,
 };
 
@@ -3805,7 +3804,7 @@ function startTimer() {
   clearInterval(timerInterval);
   timerInterval = setInterval(function() {
     var el = document.getElementById('timer-display');
-    if (el) el.textContent = formatMs(elapsedMs());
+    if (el) el.textContent = window.formatMs(window.elapsedMs());
   }, 1000);
 }
 
@@ -3822,13 +3821,13 @@ function renderAll() {
 }
 
 function renderRoundBar() {
-  var s = getState();
+  var s = window.getState();
   var el = document.getElementById('round-num');
   if (el) el.textContent = s.round;
 }
 
 function renderScore() {
-  var s = getState();
+  var s = window.getState();
   var el = document.getElementById('score-content');
   if (!el) return;
   if (!s.started) {
@@ -3867,7 +3866,7 @@ function renderScore() {
 }
 
 function renderSetup() {
-  var s = getState();
+  var s = window.getState();
   var el = document.getElementById('setup-players');
   if (!el) return;
   var vpSel = document.getElementById('vp-goal-sel');
@@ -3903,7 +3902,7 @@ function renderSetup() {
 }
 
 function renderTech() {
-  var s = getState();
+  var s = window.getState();
   var p = s.players[techPlayerIdx];
   var btnEl = document.getElementById('tech-player-btns');
   if (btnEl) btnEl.innerHTML = s.players.map(function(pl,i) {
@@ -3933,7 +3932,7 @@ function renderTech() {
 }
 
 function renderTechAddList() {
-  var s = getState();
+  var s = window.getState();
   var p = s.players[techPlayerIdx];
   var el = document.getElementById('tech-add-list');
   if (!el || !p) return;
@@ -3977,7 +3976,7 @@ async function loadHistoryList() {
   var el = document.getElementById('history-list');
   if (!el) return;
   el.innerHTML = '<div class="text-dim text-sm">Loading…</div>';
-  var history = await getHistory();
+  var history = await window.getHistory();
   if (!history.length) { el.innerHTML = '<div class="text-dim text-sm text-center" style="padding:24px">No completed games yet</div>'; return; }
   el.innerHTML = history.map(function(entry) {
     var date = new Date(entry.playedAt).toLocaleDateString();
