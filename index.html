@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker v4 - GitHub Pages build 4 -->
+<!-- TI4 Tracker v5 - build 1 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -230,6 +230,7 @@
           </div>
           <div class="flex gap-8 mt-8">
             <button class="btn btn-sm text-dim" style="border:none;background:none" onclick="showSupabaseSettings()">⚙ Change settings</button>
+            <button class="btn btn-sm" style="border-color:var(--border);font-size:12px" onclick="clearCacheAndReload()">↺ Clear Cache</button>
           </div>
         </div>
         <div id="supabase-setup">
@@ -238,10 +239,10 @@
           <label>Supabase Anon Key</label>
           <input id="inp-key" type="text" placeholder="eyJ..." style="margin-bottom:16px">
           <button id="btn-save-connect" class="btn btn-primary btn-full" onclick="App.saveSupabaseConfig()">Save & Connect</button>
+          <button class="btn btn-full mt-8" onclick="clearCacheAndReload()" style="border-color:var(--border);font-size:13px">↺ Clear Cache & Reload</button>
           <div class="text-sm text-dim mt-8" style="line-height:1.5">
             Get these from Supabase → Settings → API Keys.<br>
-            Use just the base URL, e.g. <code style="color:var(--gold)">https://xxxx.supabase.co</code><br>
-            (not the /rest/v1/ version)
+            Use just the base URL, e.g. <code style="color:var(--gold)">https://xxxx.supabase.co</code>
           </div>
         </div>
       </div>
@@ -1998,6 +1999,14 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(console.warn);
 }
 
+// Verify IIFE loaded correctly
+if (typeof window.initSync !== 'function') {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('loader').classList.add('hidden');
+    alert('Error: Core JS failed to load. Please hard-refresh the page (hold Shift and tap reload).');
+  });
+}
+
 // Always hide loader within 6s
 setTimeout(function() {
   var l = document.getElementById('loader');
@@ -2050,7 +2059,31 @@ function showScreen(id) {
 window.showScreen = showScreen;
 window.showSupabaseSettings = showSupabaseSettings;
 
-function hardRefresh() {
+function clearCacheAndReload() {
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        var unregisters = regs.map(function(r) { return r.unregister(); });
+        Promise.all(unregisters).then(function() {
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              Promise.all(keys.map(function(k) { return caches.delete(k); })).then(function() {
+                location.href = location.pathname + '?v=' + Date.now();
+              });
+            });
+          } else {
+            location.href = location.pathname + '?v=' + Date.now();
+          }
+        });
+      });
+    } else {
+      location.href = location.pathname + '?v=' + Date.now();
+    }
+  } catch(e) {
+    location.href = location.pathname + '?v=' + Date.now();
+  }
+}
+window.clearCacheAndReload = clearCacheAndReload;
   try {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
