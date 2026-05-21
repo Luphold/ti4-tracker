@@ -1,5 +1,5 @@
 # TI4 Tracker — Android PWA
-
+Work in progress
 A fully self-contained Twilight Imperium IV game tracker for Android.
 No app store. Works on any Android phone or tablet via Chrome.
 Live sync powered by Supabase (free cloud backend).
