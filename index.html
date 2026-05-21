@@ -1994,23 +1994,13 @@ function formatMs(ms) {
 
 </script>
 <script>
-/* ── App ── */
+/* TI4 Tracker App */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(console.warn);
+  navigator.serviceWorker.register('./sw.js').catch(function(){});
 }
 
-// Verify IIFE loaded correctly
-if (typeof window.initSync !== 'function') {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('loader').classList.add('hidden');
-    alert('Error: Core JS failed to load. Please hard-refresh the page (hold Shift and tap reload).');
-  });
-}
-
-// Always hide loader within 6s
 setTimeout(function() {
-  var l = document.getElementById('loader');
-  if (l) l.classList.add('hidden');
+  document.getElementById('loader').classList.add('hidden');
 }, 6000);
 
 var isAdmin = false;
@@ -2019,127 +2009,109 @@ var techPlayerIdx = 0;
 var techFilter = 'all';
 var timerInterval = null;
 
+function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+
+function showSupabaseSettings() {
+  document.getElementById('supabase-configured').style.display = 'none';
+  document.getElementById('supabase-setup').style.display = '';
+}
+window.showSupabaseSettings = showSupabaseSettings;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+window.showScreen = showScreen;
+
+function clearCacheAndReload() {
+  var go = function() { location.href = location.pathname + '?v=' + Date.now(); };
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        Promise.all(regs.map(function(r) { return r.unregister(); })).then(function() {
+          'caches' in window ? caches.keys().then(function(keys) {
+            Promise.all(keys.map(function(k) { return caches.delete(k); })).then(go);
+          }) : go();
+        });
+      }).catch(go);
+    } else { go(); }
+  } catch(e) { go(); }
+}
+window.clearCacheAndReload = clearCacheAndReload;
+
 async function init() {
   try {
     var settings = await window.getSettings();
     var url = (settings.supabaseUrl || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
     var key = settings.supabaseKey || '';
     if (url && key) {
-      // Show configured screen immediately from saved credentials
       document.getElementById('supabase-url-display').textContent = url;
       document.getElementById('supabase-configured').style.display = '';
       document.getElementById('supabase-setup').style.display = 'none';
-      // Then init Supabase in background
-      try {
-        await window.initSync({ url: url, anonKey: key });
-      } catch(e) {
-        console.error('[init] supabase failed:', e);
-        // Still show configured screen — user can try entering game
-      }
+      try { await window.initSync({ url: url, anonKey: key }); } catch(e) {}
     } else {
       showSupabaseSettings();
     }
   } catch(e) {
-    console.error('[init] error:', e);
     showSupabaseSettings();
   } finally {
     hideLoader();
   }
 }
 
-function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
-function showSupabaseSettings() {
-  document.getElementById('supabase-configured').style.display = 'none';
-  document.getElementById('supabase-setup').style.display = '';
-}
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-}
-window.showScreen = showScreen;
-window.showSupabaseSettings = showSupabaseSettings;
-
-function clearCacheAndReload() {
-  try {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        var unregisters = regs.map(function(r) { return r.unregister(); });
-        Promise.all(unregisters).then(function() {
-          if ('caches' in window) {
-            caches.keys().then(function(keys) {
-              Promise.all(keys.map(function(k) { return caches.delete(k); })).then(function() {
-                location.href = location.pathname + '?v=' + Date.now();
-              });
-            });
-          } else {
-            location.href = location.pathname + '?v=' + Date.now();
-          }
-        });
-      });
-    } else {
-      location.href = location.pathname + '?v=' + Date.now();
-    }
-  } catch(e) {
-    location.href = location.pathname + '?v=' + Date.now();
-  }
-}
-window.clearCacheAndReload = clearCacheAndReload;
-}
-window.hardRefresh = hardRefresh;
-
 var dualSide = 'The Firmament';
 window.openFactionCard = function(factionName) {
   var isDual = factionName === 'The Firmament / The Obsidian';
   var lookupName = isDual ? dualSide : factionName;
-  var d = FACTION_DATA[lookupName];
+  var d = window.FACTION_DATA[lookupName];
   if (!d) return;
-  var html = '<div class="fc-handle"></div>';
-  html += '<div style="padding:0 16px 8px"><div class="cinzel" style="font-size:18px;color:var(--gold);margin-bottom:4px">' + lookupName + '</div>';
+  var h = '<div class="fc-handle"></div><div style="padding:0 16px 8px">';
+  h += '<div class="cinzel" style="font-size:18px;color:var(--gold);margin-bottom:4px">' + lookupName + '</div>';
   if (isDual) {
-    html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
-    html += '<button onclick="window.switchDualSide(\'The Firmament\')" class="btn btn-sm flex-1" style="' + (dualSide==='The Firmament'?'border-color:var(--gold);color:var(--gold)':'') + '">The Firmament</button>';
-    html += '<button onclick="window.switchDualSide(\'The Obsidian\')" class="btn btn-sm flex-1" style="' + (dualSide==='The Obsidian'?'border-color:var(--gold);color:var(--gold)':'') + '">The Obsidian</button>';
-    html += '</div>';
+    h += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+    h += '<button onclick="window.switchDualSide('The Firmament')" class="btn btn-sm flex-1" style="' + (dualSide==='The Firmament'?'border-color:var(--gold);color:var(--gold)':'') + '">The Firmament</button>';
+    h += '<button onclick="window.switchDualSide('The Obsidian')" class="btn btn-sm flex-1" style="' + (dualSide==='The Obsidian'?'border-color:var(--gold);color:var(--gold)':'') + '">The Obsidian</button>';
+    h += '</div>';
   }
-  html += '</div>';
+  h += '</div>';
   if (d.abilities && d.abilities.length) {
-    html += '<div class="fc-section">Faction Abilities</div>';
+    h += '<div class="fc-section">Faction Abilities</div>';
     d.abilities.forEach(function(a) {
       var ci = a.indexOf(':'), name = ci>0?a.slice(0,ci):'', rest = ci>0?a.slice(ci+1).trim():a;
-      html += '<div class="fc-ability">' + (name?'<b>'+name+':</b> ':'') + rest + '</div>';
+      h += '<div class="fc-ability">' + (name?'<b>'+name+':</b> ':'') + rest + '</div>';
     });
   }
   if (d.factionTechs && d.factionTechs.length) {
-    html += '<div class="fc-section">Faction Technologies</div>';
+    h += '<div class="fc-section">Faction Technologies</div>';
     d.factionTechs.forEach(function(t) {
-      html += '<div class="fc-ability"><b>' + t.name + '</b><br><span style="font-size:12px">' + t.text + '</span></div>';
+      h += '<div class="fc-ability"><b>' + t.name + '</b><br><span style="font-size:12px">' + t.text + '</span></div>';
     });
   }
   if (d.units && d.units.length) {
-    html += '<div class="fc-section">Faction-Specific Units</div>';
-    d.units.forEach(function(u) { html += '<div class="fc-ability" style="color:#6db8e8">' + u + '</div>'; });
+    h += '<div class="fc-section">Faction-Specific Units</div>';
+    d.units.forEach(function(u) { h += '<div class="fc-ability" style="color:#6db8e8">' + u + '</div>'; });
   }
   if (d.breakthrough) {
-    html += '<div class="fc-section" style="color:var(--orange)">Breakthrough</div>';
-    html += '<div class="fc-ability">' + d.breakthrough + '</div>';
+    h += '<div class="fc-section" style="color:var(--orange)">Breakthrough</div>';
+    h += '<div class="fc-ability">' + d.breakthrough + '</div>';
   }
   var flagships = Array.isArray(d.flagship) ? d.flagship : [d.flagship];
-  html += '<div class="fc-section">Flagship</div>';
-  flagships.forEach(function(f) { if(f) html += '<div class="fc-flagship">' + f + '</div>'; });
+  h += '<div class="fc-section">Flagship</div>';
+  flagships.forEach(function(f) { if(f) h += '<div class="fc-flagship">' + f + '</div>'; });
   if (d.mech) {
-    html += '<div class="fc-section">Mech</div>';
+    h += '<div class="fc-section">Mech</div>';
     var mechs = Array.isArray(d.mech) ? d.mech : [d.mech];
-    mechs.forEach(function(m) { if(m) html += '<div class="fc-flagship" style="color:#c39bd3">' + m + '</div>'; });
+    mechs.forEach(function(m) { if(m) h += '<div class="fc-flagship" style="color:#c39bd3">' + m + '</div>'; });
   }
   if (d.leaders) {
-    html += '<div class="fc-section">Leaders</div>';
+    h += '<div class="fc-section">Leaders</div>';
     var agents = Array.isArray(d.leaders.agent) ? d.leaders.agent : [d.leaders.agent];
-    agents.forEach(function(a) { html += '<div class="fc-leader"><span class="fc-ltype agent">AGENT</span>' + a + '</div>'; });
-    if (d.leaders.commander) html += '<div class="fc-leader"><span class="fc-ltype commander">COMMANDER</span>' + d.leaders.commander.replace(/ABILITY:/g,'<br><b>ABILITY:</b>') + '</div>';
+    agents.forEach(function(a) { h += '<div class="fc-leader"><span class="fc-ltype agent">AGENT</span>' + a + '</div>'; });
+    if (d.leaders.commander) h += '<div class="fc-leader"><span class="fc-ltype commander">COMMANDER</span>' + d.leaders.commander.replace(/ABILITY:/g,'<br><b>ABILITY:</b>') + '</div>';
     var heroes = Array.isArray(d.leaders.hero) ? d.leaders.hero : [d.leaders.hero];
-    heroes.forEach(function(h) { html += '<div class="fc-leader"><span class="fc-ltype hero">HERO</span>' + h + '</div>'; });
+    heroes.forEach(function(h2) { h += '<div class="fc-leader"><span class="fc-ltype hero">HERO</span>' + h2 + '</div>'; });
   }
-  document.getElementById('fc-card-content').innerHTML = html;
+  document.getElementById('fc-card-content').innerHTML = h;
   document.getElementById('fc-overlay').classList.add('open');
   document.getElementById('fc-card').classList.add('open');
 };
@@ -2156,7 +2128,7 @@ window.App = {
     if (!url || !key) { alert('Please enter both URL and key'); return; }
     url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
     var btn = document.getElementById('btn-save-connect');
-    if (btn) { btn.textContent = 'Connecting…'; btn.disabled = true; }
+    if (btn) { btn.textContent = 'Connecting...'; btn.disabled = true; }
     try {
       await window.initSync({ url: url, anonKey: key });
       await window.setSetting('supabaseUrl', url);
@@ -2164,26 +2136,26 @@ window.App = {
       document.getElementById('supabase-url-display').textContent = url;
       document.getElementById('supabase-configured').style.display = '';
       document.getElementById('supabase-setup').style.display = 'none';
-      alert('✓ Connected!');
+      alert('Connected!');
     } catch(e) {
-      alert('Failed: ' + (e.message||'check URL and key'));
+      alert('Failed: ' + (e.message || 'check URL and key'));
       if (btn) { btn.textContent = 'Save & Connect'; btn.disabled = false; }
     }
   },
 
   async enterAsAdmin() {
     isAdmin = true;
-    window.initGame(true, function(s) { renderAll(); });
+    window.initGame(true, function() { renderAll(); });
     var code = window.generateRoomCode();
     var draft = await window.loadDraft();
     if (draft && draft.started && !draft.ended) {
-      if (confirm('Resume saved game?')) { window.setState(draft); } 
+      if (confirm('Resume saved game?')) { window.setState(draft); }
       else { await window.clearDraft(); window.setState(window.defaultState()); }
     } else { window.setState(window.defaultState()); }
     enterGame(code);
     await window.joinRoom(code, true, {
       onConnect: async function() { updateConnDot(true); await window.broadcastState(window.getState()); },
-      onDisconnect: function() { updateConnDot(false); },
+      onDisconnect: function() { updateConnDot(false); }
     });
   },
 
@@ -2195,23 +2167,15 @@ window.App = {
     isAdmin = false;
     await window.clearDraft();
     window.setState(window.defaultState());
-    window.initGame(false, function(s) { renderAll(); });
+    window.initGame(false, function() { renderAll(); });
     enterGame(code);
     var scoreEl = document.getElementById('score-content');
-    var logLines = [];
-    function log(msg, color) {
-      color = color || 'var(--text-dim)';
-      logLines.push('<span style="color:' + color + '">' + msg + '</span>');
-      if (scoreEl) scoreEl.innerHTML = '<div class="panel" style="font-family:monospace;font-size:12px;line-height:2"><div class="cinzel text-gold mb-8">Connecting to ' + code + '…</div>' + logLines.join('<br>') + '</div>';
-    }
+    if (scoreEl) scoreEl.innerHTML = '<div class="panel" style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 16px"></div><div class="cinzel text-gold">Connecting to ' + code + '...</div></div>';
     try {
       await window.joinRoom(code, false, {
         onConnect: function() { updateConnDot(true); },
         onDisconnect: function() { updateConnDot(false); },
-        onState: function(s) {
-          if (!s) return;
-          window.setState(s); renderAll();
-        }
+        onState: function(s) { if (!s) return; window.setState(s); renderAll(); }
       });
     } catch(e) { console.error('[guest]', e); }
   },
@@ -2223,7 +2187,7 @@ window.App = {
     var colors = ['#e74c3c','#2980b9','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#16a085'];
     var used = s.players.map(function(p) { return p.color; });
     var color = colors.find(function(c) { return !used.includes(c); }) || '#888';
-    var players = s.players.concat([window.defaultPlayer('Player ' + (s.players.length+1), FACTIONS[s.players.length % FACTIONS.length], color)]);
+    var players = s.players.concat([window.defaultPlayer('Player '+(s.players.length+1), window.FACTIONS[s.players.length % window.FACTIONS.length], color)]);
     window.setState(Object.assign({}, s, {players: players}));
     window.saveDraft(window.getState());
     renderSetup();
@@ -2280,7 +2244,7 @@ window.App = {
     var winner = s.players.slice().sort(function(a,b){return b.vp-a.vp;})[0];
     await window.endGame(winner ? winner.name : null);
     renderAll();
-    alert('Game saved · Winner: ' + (winner ? winner.name : '—'));
+    alert('Game saved. Winner: ' + (winner ? winner.name : 'none'));
   },
 
   async newGame() {
@@ -2294,7 +2258,7 @@ window.App = {
   async forceSync() {
     if (!isAdmin) return;
     await window.broadcastState(window.getState());
-    alert('✓ State pushed to DB');
+    alert('State pushed to DB');
   },
 
   async deleteHistory(id, el) {
@@ -2316,10 +2280,10 @@ window.App = {
     if (tab==='setup') renderSetup();
   },
 
-  setTechFilter: function(f) {
+  setTechFilter: function(f, e) {
     techFilter = f;
     document.querySelectorAll('.filter-tab').forEach(function(t){t.classList.remove('active');});
-    event.target.classList.add('active');
+    if (e && e.target) e.target.classList.add('active');
     renderTechAddList();
   },
 
@@ -2331,7 +2295,7 @@ window.App = {
 
   async addTech(name) { if (!isAdmin) return; await window.addTech(techPlayerIdx, name); renderTech(); },
   async removeTech(name) { if (!isAdmin) return; await window.removeTech(techPlayerIdx, name); renderTech(); },
-  openFactionCard: window.openFactionCard,
+  openFactionCard: function(n) { window.openFactionCard(n); }
 };
 
 function enterGame(code) {
@@ -2340,8 +2304,7 @@ function enterGame(code) {
   document.getElementById('nav').classList.add('visible');
   if (isAdmin) {
     var pb = document.getElementById('pause-btn'); if(pb) pb.style.display='';
-    var qb = document.getElementById('qr-btn'); if(qb) qb.style.display='';
-    if (code) qb.textContent = 'Room: ' + code;
+    var qb = document.getElementById('qr-btn'); if(qb) { qb.style.display=''; qb.textContent='Room: '+code; }
   }
   startTimer(); renderAll();
 }
@@ -2377,38 +2340,38 @@ function renderScore() {
   var el = document.getElementById('score-content');
   if (!el) return;
   if (!s.started) {
-    el.innerHTML = '<div class="panel" style="text-align:center;padding:40px"><div class="cinzel text-gold" style="font-size:16px;margin-bottom:8px">No game in progress</div><div class="text-dim text-sm">Go to Setup to start a game</div>' + (isAdmin?'<button class="btn btn-primary mt-16" onclick="App.showNav(\'setup\')">Go to Setup</button>':'') + '</div>';
+    el.innerHTML = '<div class="panel" style="text-align:center;padding:40px"><div class="cinzel text-gold" style="font-size:16px;margin-bottom:8px">No game in progress</div><div class="text-dim text-sm">Go to Setup to start a game</div>'+(isAdmin?'<button class="btn btn-primary mt-16" onclick="App.showNav('setup')">Go to Setup</button>':'')+'</div>';
     return;
   }
   var players = s.players.slice().sort(function(a,b){return b.vp-a.vp;});
-  var html = '';
+  var h = '';
   if (isAdmin && !s.ended) {
-    html += '<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-    html += '<button class="btn btn-primary flex-1" onclick="App.nextRound()">Next Round ▶</button>';
-    html += '<button class="btn btn-sm" onclick="App.forceSync()">📡 Sync</button>';
-    html += '<button class="btn btn-danger btn-sm" onclick="App.endGame()">⏹ End</button>';
-    html += '</div>';
+    h += '<div class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+    h += '<button class="btn btn-primary flex-1" onclick="App.nextRound()">Next Round</button>';
+    h += '<button class="btn btn-sm" onclick="App.forceSync()">Sync</button>';
+    h += '<button class="btn btn-danger btn-sm" onclick="App.endGame()">End</button>';
+    h += '</div>';
   }
   if (s.ended) {
-    html += '<div class="panel" style="text-align:center;border-color:var(--gold)"><div class="cinzel text-gold" style="font-size:18px;margin-bottom:4px">🏆 Game Over</div>' + (s.winner?'<div>Winner: <b>'+s.winner+'</b></div>':'') + '<div class="text-dim text-sm">'+s.round+' rounds</div>' + (isAdmin?'<button class="btn btn-primary mt-8" onclick="App.newGame()">New Game</button>':'') + '</div>';
+    h += '<div class="panel" style="text-align:center;border-color:var(--gold)"><div class="cinzel text-gold" style="font-size:18px">Game Over</div>'+(s.winner?'<div>Winner: <b>'+s.winner+'</b></div>':'')+(isAdmin?'<button class="btn btn-primary mt-8" onclick="App.newGame()">New Game</button>':'')+'</div>';
   }
-  html += '<div style="padding:0 8px">';
+  h += '<div style="padding:0 8px">';
   players.forEach(function(p) {
     var i = s.players.indexOf(p);
-    var pct = Math.min(100, (p.vp/s.vpGoal)*100);
-    html += '<div class="score-row" style="margin-bottom:8px">';
-    html += '<div class="score-color" style="background:'+p.color+'"></div>';
-    html += '<div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="score-name">'+p.name+'</span>';
-    html += '<button onclick="openFactionCard(\''+p.faction.replace(/'/g,"\'")+'\''+')" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer">ⓘ</button></div>';
-    html += '<div class="text-sm text-dim">'+p.faction+'</div>';
-    html += '<div class="vp-bar-wrap"><div class="vp-bar" style="width:'+pct+'%;background:'+p.color+'"></div></div></div>';
-    html += '<div style="display:flex;align-items:center;gap:8px"><div class="score-vp" style="color:'+p.color+'">'+p.vp+'</div>';
-    if (isAdmin && !s.ended) html += '<div class="score-btns"><button class="vp-btn minus" onclick="App.vpMinus('+i+')">−</button><button class="vp-btn plus" onclick="App.vpPlus('+i+')">+</button></div>';
-    html += '</div></div>';
+    var pct = Math.min(100,(p.vp/s.vpGoal)*100);
+    h += '<div class="score-row" style="margin-bottom:8px">';
+    h += '<div class="score-color" style="background:'+p.color+'"></div>';
+    h += '<div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="score-name">'+p.name+'</span>';
+    h += '<button onclick="window.openFactionCard(''+p.faction.replace(/'/g,"\'")+'')" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer">i</button></div>';
+    h += '<div class="text-sm text-dim">'+p.faction+'</div>';
+    h += '<div class="vp-bar-wrap"><div class="vp-bar" style="width:'+pct+'%;background:'+p.color+'"></div></div></div>';
+    h += '<div style="display:flex;align-items:center;gap:8px"><div class="score-vp" style="color:'+p.color+'">'+p.vp+'</div>';
+    if (isAdmin && !s.ended) h += '<div class="score-btns"><button class="vp-btn minus" onclick="App.vpMinus('+i+')">-</button><button class="vp-btn plus" onclick="App.vpPlus('+i+')">+</button></div>';
+    h += '</div></div>';
   });
-  html += '</div>';
-  html += '<div class="panel"><div class="text-sm text-dim text-center">Goal: '+s.vpGoal+' VP · Round '+s.round+'</div></div>';
-  el.innerHTML = html;
+  h += '</div>';
+  h += '<div class="panel"><div class="text-sm text-dim text-center">Goal: '+s.vpGoal+' VP - Round '+s.round+'</div></div>';
+  el.innerHTML = h;
 }
 
 function renderSetup() {
@@ -2433,16 +2396,16 @@ function renderSetup() {
     }
   }
   el.innerHTML = s.players.map(function(p,i) {
-    return '<div class="player-setup-card">' +
-      '<div class="flex gap-8 mb-8" style="align-items:flex-end">' +
-      '<div class="flex-1"><label>Name</label><input value="'+p.name+'" oninput="App.updatePlayerField('+i+',\'name\',this.value)"></div>' +
-      '<input type="color" value="'+p.color+'" style="width:40px;height:40px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;padding:2px" onchange="App.updatePlayerField('+i+',\'color\',this.value)">' +
-      (!s.started && isAdmin ? '<button onclick="App.removePlayer('+i+')" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0 4px">✕</button>' : '') +
-      '</div><label>Faction <span style="font-size:11px;color:var(--text-dim)">(tap ⓘ to view)</span></label>' +
-      '<div class="flex gap-8">' +
-      (s.started ? '<div style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">'+p.faction+'</div>'
-        : '<select style="flex:1" onchange="App.updatePlayerField('+i+',\'faction\',this.value)">'+FACTIONS.map(function(f){return '<option'+(f===p.faction?' selected':'')+'>'+f+'</option>';}).join('')+'</select>') +
-      '<button onclick="openFactionCard(\''+p.faction.replace(/'/g,"\'")+'\')" class="btn btn-sm">ⓘ</button>' +
+    return '<div class="player-setup-card">'+
+      '<div class="flex gap-8 mb-8" style="align-items:flex-end">'+
+      '<div class="flex-1"><label>Name</label><input value="'+p.name+'" oninput="App.updatePlayerField('+i+','name',this.value)"></div>'+
+      '<input type="color" value="'+p.color+'" style="width:40px;height:40px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;padding:2px" onchange="App.updatePlayerField('+i+','color',this.value)">'+
+      (!s.started && isAdmin?'<button onclick="App.removePlayer('+i+')" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0 4px">x</button>':'')+
+      '</div><label>Faction</label>'+
+      '<div class="flex gap-8">'+
+      (s.started?'<div style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">'+p.faction+'</div>'
+        :'<select style="flex:1" onchange="App.updatePlayerField('+i+','faction',this.value)">'+window.FACTIONS.map(function(f){return '<option'+(f===p.faction?' selected':'')+'>'+f+'</option>';}).join('')+'</select>')+
+      '<button onclick="window.openFactionCard(''+p.faction.replace(/'/g,"\'")+'''+')" class="btn btn-sm">i</button>'+
       '</div></div>';
   }).join('');
 }
@@ -2455,12 +2418,12 @@ function renderTech() {
     return '<button class="btn btn-sm tech-player-btn'+(i===techPlayerIdx?' btn-primary':'')+'" onclick="App.setTechPlayer('+i+')" style="border-color:'+pl.color+'">'+pl.name+'</button>';
   }).join('');
   var nameEl = document.getElementById('tech-player-name');
-  if (nameEl && p) nameEl.textContent = p.name + ' — ' + p.faction;
+  if (nameEl && p) nameEl.textContent = p.name + ' - ' + p.faction;
   var tabEl = document.getElementById('tech-filter-tabs');
   if (tabEl) {
     var tabs = [['all','All'],['biotic','Biotic'],['propulsion','Propulsion'],['cybernetic','Cybernetic'],['warfare','Warfare'],['unit','Units'],['faction','Faction']];
     tabEl.innerHTML = tabs.map(function(t) {
-      return '<button class="filter-tab'+(techFilter===t[0]?' active':'')+'" onclick="App.setTechFilter(\''+t[0]+'\')">'+t[1]+'</button>';
+      return '<button class="filter-tab'+(techFilter===t[0]?' active':'')+'" onclick="App.setTechFilter(''+t[0]+'',event)">'+t[1]+'</button>';
     }).join('');
   }
   var curEl = document.getElementById('tech-current');
@@ -2468,9 +2431,9 @@ function renderTech() {
     if (!p.techs || !p.techs.length) { curEl.innerHTML = '<div class="text-sm text-dim">No technologies researched</div>'; }
     else {
       curEl.innerHTML = p.techs.map(function(name) {
-        var t = TECHNOLOGIES.find(function(x){return x.name===name;});
+        var t = window.TECHNOLOGIES.find(function(x){return x.name===name;});
         var type = t ? t.type : 'unit';
-        return '<span class="tech-chip '+type+'">'+name+(isAdmin?' <span onclick="App.removeTech(\''+name.replace(/'/g,"\'")+'\')" style="opacity:.6;cursor:pointer">✕</span>':'')+'</span>';
+        return '<span class="tech-chip '+type+'">'+name+(isAdmin?' <span onclick="App.removeTech(''+name.replace(/'/g,"\'")+'''+')" style="opacity:.6;cursor:pointer">x</span>':'')+'</span>';
       }).join('');
     }
   }
@@ -2482,24 +2445,24 @@ function renderTechAddList() {
   var p = s.players[techPlayerIdx];
   var el = document.getElementById('tech-add-list');
   if (!el || !p) return;
-  var fd = FACTION_DATA[p.faction] || {};
-  var myFactionTechs = {};
-  (fd.factionTechs||[]).forEach(function(ft){myFactionTechs[ft.name]=true;});
+  var fd = window.FACTION_DATA[p.faction] || {};
+  var myFT = {};
+  (fd.factionTechs||[]).forEach(function(ft){myFT[ft.name]=true;});
   if (p.faction==='The Firmament / The Obsidian') {
     ['The Firmament','The Obsidian'].forEach(function(fn) {
-      var ffd=FACTION_DATA[fn]||{};
-      (ffd.factionTechs||[]).forEach(function(ft){myFactionTechs[ft.name]=true;});
+      var ffd=window.FACTION_DATA[fn]||{};
+      (ffd.factionTechs||[]).forEach(function(ft){myFT[ft.name]=true;});
     });
   }
   var TYPE_LABELS = {biotic:'Biotic',propulsion:'Propulsion',cybernetic:'Cybernetic',warfare:'Warfare',unit:'Unit Upgrades',faction:'Faction'};
-  var techs = TECHNOLOGIES.filter(function(t) {
+  var techs = window.TECHNOLOGIES.filter(function(t) {
     if (techFilter!=='all' && t.type!==techFilter) return false;
     if (p.techs && p.techs.includes(t.name)) return false;
     return true;
   });
   if (techFilter==='all'||techFilter==='faction') {
-    var mine=techs.filter(function(t){return t.type==='faction'&&myFactionTechs[t.name];});
-    var others=techs.filter(function(t){return t.type==='faction'&&!myFactionTechs[t.name];});
+    var mine=techs.filter(function(t){return t.type==='faction'&&myFT[t.name];});
+    var others=techs.filter(function(t){return t.type==='faction'&&!myFT[t.name];});
     var nonF=techs.filter(function(t){return t.type!=='faction';});
     techs = techFilter==='faction' ? mine.concat(others) : nonF.concat(mine).concat(others);
   }
@@ -2510,9 +2473,9 @@ function renderTechAddList() {
   });
   el.innerHTML = groupOrder.map(function(type) {
     var items = groups[type].map(function(t) {
-      var greyed = t.type==='faction' && !myFactionTechs[t.name];
+      var greyed = t.type==='faction' && !myFT[t.name];
       var nm = t.name.replace(/'/g,"\'");
-      return '<div class="tech-add-item '+type+'" onclick="'+(isAdmin&&!greyed?'App.addTech(\''+nm+'\')':'void(0)')+'" style="'+(greyed?'opacity:0.3;cursor:default;':!isAdmin?'cursor:default;':'')+'" title="'+(t.desc||t.name)+'">'+(isAdmin&&!greyed?'+':'·')+' '+t.name+'</div>';
+      return '<div class="tech-add-item '+type+'" onclick="'+(isAdmin&&!greyed?'App.addTech(''+nm+'')':'void(0)')+'" style="'+(greyed?'opacity:0.3;cursor:default;':!isAdmin?'cursor:default;':'')+'" title="'+(t.desc||t.name)+'">'+(isAdmin&&!greyed?'+':'·')+' '+t.name+'</div>';
     }).join('');
     return '<div class="tech-add-section"><div class="tech-add-label '+type+'">'+(TYPE_LABELS[type]||type)+'</div><div class="tech-add-grid">'+items+'</div></div>';
   }).join('');
@@ -2521,18 +2484,18 @@ function renderTechAddList() {
 async function loadHistoryList() {
   var el = document.getElementById('history-list');
   if (!el) return;
-  el.innerHTML = '<div class="text-dim text-sm">Loading…</div>';
+  el.innerHTML = '<div class="text-dim text-sm">Loading...</div>';
   var history = await window.getHistory();
   if (!history.length) { el.innerHTML = '<div class="text-dim text-sm text-center" style="padding:24px">No completed games yet</div>'; return; }
   el.innerHTML = history.map(function(entry) {
     var date = new Date(entry.playedAt).toLocaleDateString();
     var time = new Date(entry.playedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     var players = (entry.players||[]).map(function(p){return p.name;}).join(', ');
-    return '<div class="history-card" style="position:relative">' +
-      '<div class="history-date">'+date+' '+time+' · '+(entry.rounds||1)+' rounds · '+(entry.vpGoal||10)+' VP</div>' +
-      (entry.winner?'<div class="history-winner">🏆 '+entry.winner+'</div>':'') +
-      '<div class="history-players">'+players+'</div>' +
-      '<button onclick="App.deleteHistory('+entry.id+',this)" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--red);font-size:16px;cursor:pointer">🗑</button>' +
+    return '<div class="history-card" style="position:relative">'+
+      '<div class="history-date">'+date+' '+time+' - '+(entry.rounds||1)+' rounds - '+(entry.vpGoal||10)+' VP</div>'+
+      (entry.winner?'<div class="history-winner">Winner: '+entry.winner+'</div>':'')+
+      '<div class="history-players">'+players+'</div>'+
+      '<button onclick="App.deleteHistory('+entry.id+',this)" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--red);font-size:16px;cursor:pointer">Del</button>'+
       '</div>';
   }).join('');
 }
