@@ -3602,11 +3602,6 @@ window.closeFactionCard = function() {
   document.getElementById('fc-overlay').classList.remove('open');
   document.getElementById('fc-card').classList.remove('open');
 };
-).join('') +
-  (s ? '<span style="color:var(--text-dim)">started:' + s.started + ' players:' + (s.players&&s.players.length) + ' round:' + s.round + '</span><br>' : '') +
-  '<span style="color:var(--text-dim)">isAdmin:' + isAdmin + ' room:' + (typeof getRoomCode==='function'?getRoomCode()||'none':'?') + '</span><br>' +
-  '<span style="color:var(--blue);cursor:pointer" onclick="showDiag()">↺ refresh</span>';
-}
 
 window.App = {
   async saveSupabaseConfig() {
