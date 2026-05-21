@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.002 -->
+<!-- TI4 Tracker 1.003 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -71,7 +71,8 @@
 
     /* ── Loading ── */
     #loader { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 10000; }
-    #loader.hidden { display: none; }
+    #loader.hidden { display: none; pointer-events: none; }
+    #loader.hidden { display: none; pointer-events: none; }
     .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -223,7 +224,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.002</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.003</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -235,7 +236,7 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.002</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.003</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
@@ -2003,7 +2004,7 @@ if ('serviceWorker' in navigator) {
 
 setTimeout(function() {
   document.getElementById('loader').classList.add('hidden');
-}, 6000);
+}, 500);
 
 var isAdmin = false;
 var currentNav = 'score';
