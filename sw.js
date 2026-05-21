@@ -1,5 +1,5 @@
 // TI4 Tracker Service Worker — network first, minimal caching
-const CACHE = 'ti4-v1.004';
+const CACHE = 'ti4-v1.005';
 
 self.addEventListener('install', () => self.skipWaiting());
 
