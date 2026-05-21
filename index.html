@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker v4 - GitHub Pages build 2 -->
+<!-- TI4 Tracker v4 - GitHub Pages build 4 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -236,11 +236,12 @@
           <div id="diag" class="text-sm text-dim mt-8" style="font-family:monospace;font-size:10px;line-height:1.8;display:none"></div>
         </div>
         <div id="supabase-setup">
+          <div id="js-status" style="color:var(--red);font-size:11px;margin-bottom:8px">⏳ Loading JS...</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
           <input id="inp-key" type="text" placeholder="eyJ..." style="margin-bottom:16px">
-          <button class="btn btn-primary btn-full" onclick="App.saveSupabaseConfig()">Save & Connect</button>
+          <button class="btn btn-primary btn-full" onclick="saveAndConnect()">Save & Connect</button>
           <div class="text-sm text-dim mt-8" style="line-height:1.5">
             Get these from Supabase → Settings → API Keys.<br>
             Use just the base URL, e.g. <code style="color:var(--gold)">https://xxxx.supabase.co</code><br>
@@ -2256,6 +2257,26 @@ window.closeFactionCard = function() {
 };
 
 // ── App object ────────────────────────────────────────────────────────────
+
+// Show JS loaded indicator
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var el = document.getElementById('js-status');
+    if (el) el.innerHTML = window.App ? '✓ JS loaded' : '✗ JS failed to load';
+    if (el) el.style.color = window.App ? 'var(--green)' : 'var(--red)';
+  }, 1000);
+});
+
+// Standalone functions for buttons that fire before App is ready
+function saveAndConnect() {
+  if (window.App && window.App.saveSupabaseConfig) {
+    window.App.saveSupabaseConfig();
+  } else {
+    alert("App not loaded yet - please wait a moment and try again");
+  }
+}
+window.saveAndConnect = saveAndConnect;
+
 window.App = {
 
   async saveSupabaseConfig() {
@@ -2265,7 +2286,7 @@ window.App = {
     url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
     if (!url.startsWith('https://')) return toast('URL must start with https://');
     
-    const btn = document.querySelector('[onclick="App.saveSupabaseConfig()"]');
+    const btn = document.querySelector('[onclick="saveAndConnect()"]');
     if (btn) { btn.textContent = 'Connecting…'; btn.disabled = true; }
     
     try {
@@ -2293,7 +2314,7 @@ window.App = {
     const draft = await loadDraft();
     const hasDraft = draft?.started && !draft?.ended;
     if (hasDraft) {
-      const resume = confirm('You have a saved game in progress. Resume it?');
+      const resume = confirm("You have a saved game in progress. Resume it?");
       if (resume) {
         setState(draft);
       } else {
@@ -2448,7 +2469,7 @@ window.App = {
 
   async endGame() {
     if (!isAdmin || getState().ended) return;
-    if (!confirm('End game and save results?')) return;
+    if (!confirm("End game and save results?")) return;
     const s = getState();
     const winner = [...s.players].sort((a,b)=>b.vp-a.vp)[0];
     await endGame(winner?.name || null);
@@ -2456,14 +2477,16 @@ window.App = {
     toast(`Game saved · Winner: ${winner?.name || '—'}`);
     await loadHistoryList();
   },
-async newGame() {
+
   async forceSync() {
     if (!isAdmin) return;
     toast('Syncing to DB…');
     await broadcastState(getState());
     toast('✓ State pushed to DB — guests will see it within 3 seconds');
   },
-    if (!confirm('Start a completely new game? The current game is already saved.')) return;
+
+  async newGame() {
+    if (!confirm("Start a completely new game? The current game is already saved.")) return;
     await clearDraft();
     setState(defaultState());
     await broadcastState(getState());
@@ -2473,7 +2496,7 @@ async newGame() {
   },
 
   async deleteHistory(id, el) {
-    if (!confirm('Delete this game from history?')) return;
+    if (!confirm("Delete this game from history?")) return;
     await deleteHistoryEntry(id);
     el.closest('.history-card').remove();
     toast('Deleted');
