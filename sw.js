@@ -1,0 +1,26 @@
+// TI4 Tracker Service Worker — network first, minimal caching
+const CACHE = 'ti4-v5';
+
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Network first — always fetch fresh, fall back to cache
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('supabase.co')) return; // never cache Supabase
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
+  );
+});
