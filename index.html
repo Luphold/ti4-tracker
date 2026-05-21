@@ -2084,15 +2084,6 @@ function clearCacheAndReload() {
   }
 }
 window.clearCacheAndReload = clearCacheAndReload;
-  try {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        Promise.all(regs.map(function(r) { return r.unregister(); })).then(function() {
-          location.href = location.pathname + '?r=' + Date.now();
-        });
-      });
-    } else { location.reload(true); }
-  } catch(e) { location.reload(true); }
 }
 window.hardRefresh = hardRefresh;
 
