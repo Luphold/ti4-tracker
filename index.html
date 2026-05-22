@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.018 -->
+<!-- TI4 Tracker 2.019 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.018';
+var VERSION = '2.019';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1354,21 +1354,29 @@ function renderScore() {
 
 function renderObjectiveRow(objs, stage) {
   var h = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:space-around">';
-  objs.forEach(function(o) {
+  objs.forEach(function(o, idx) {
     if (o.revealed) {
-      // Face-up card - styled to match physical cards
       var accent = stage === 1 ? '#d97706' : '#3a8bce';
       var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
-      h += '<div style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.3) inset">';
+      var stageKey = 'stage' + stage;
+      // Score bricks on the right edge
+      var bricks = '';
+      (o.scoredBy || []).forEach(function(playerIdx) {
+        var p = state.players[playerIdx];
+        if (p) bricks += '<div style="width:8px;height:8px;background:' + p.color + ';border:1px solid rgba(255,255,255,.3);margin:1px 0;border-radius:1px"></div>';
+      });
+      h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.3) inset;cursor:pointer;position:relative">';
       // Title
       h += '<div style="font-weight:700;color:' + accent + ';font-size:9px;letter-spacing:.05em;padding:2px 0;line-height:1.1;min-height:22px;display:flex;align-items:center;justify-content:center">' + o.name + '</div>';
-      // STATUS PHASE banner
-      h += '<div style="background:' + accent + ';color:#0a1525;font-size:7px;font-weight:700;letter-spacing:.1em;padding:1px 0;margin:2px 0">STATUS PHASE</div>';
-      // Description
-      h += '<div style="color:#dde4f0;font-size:8px;flex:1;display:flex;align-items:center;justify-content:center;padding:2px">' + o.desc + '</div>';
+      // Description (centered, takes most of card)
+      h += '<div style="color:#dde4f0;font-size:8px;flex:1;display:flex;align-items:center;justify-content:center;padding:4px">' + o.desc + '</div>';
       // VP circle at bottom
       h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:14px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 2px">' + stage + '</div>';
       h += '<div style="color:' + accent + ';font-size:7px;letter-spacing:.1em;font-weight:700">' + vpText + '</div>';
+      // Color bricks stacked on right edge
+      if (bricks) {
+        h += '<div style="position:absolute;right:-2px;top:6px;display:flex;flex-direction:column">' + bricks + '</div>';
+      }
       h += '</div>';
     } else {
       // Face-down card: show card back image
@@ -1729,6 +1737,166 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
+// Track which objective is being shown in the enlarged view
+var currentObjective = null; // { stageKey, idx }
+
+function openObjective(stageKey, idx) {
+  var o = state.objectives[stageKey][idx];
+  if (!o) return;
+  currentObjective = { stageKey: stageKey, idx: idx };
+  var stage = stageKey === 'stage1' ? 1 : 2;
+  var accent = stage === 1 ? '#d97706' : '#3a8bce';
+  var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
+  
+  var h = '<div style="background:#0a1525;border:3px solid ' + accent + ';border-radius:12px;padding:20px;text-align:center;box-shadow:0 0 20px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.4) inset">';
+  h += '<div style="font-weight:700;color:' + accent + ';font-size:18px;letter-spacing:.1em;padding:8px 0;line-height:1.2">' + o.name + '</div>';
+  h += '<div style="color:#dde4f0;font-size:14px;padding:20px 8px;line-height:1.5">' + o.desc + '</div>';
+  h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:32px;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:8px auto">' + stage + '</div>';
+  h += '<div style="color:' + accent + ';font-size:10px;letter-spacing:.15em;font-weight:700">' + vpText + '</div>';
+  h += '</div>';
+  
+  // Scored by section
+  if (o.scoredBy && o.scoredBy.length) {
+    h += '<div class="mt-16"><div class="small dim">Scored by:</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    o.scoredBy.forEach(function(playerIdx) {
+      var p = state.players[playerIdx];
+      if (!p) return;
+      h += '<div style="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border2);border-radius:16px;padding:4px 10px">';
+      h += '<div style="width:12px;height:12px;background:' + p.color + ';border-radius:50%"></div>';
+      h += '<span style="color:' + p.color + ';font-size:12px;font-weight:600">' + p.name + '</span>';
+      if (isAdmin) h += '<span onclick="event.stopPropagation();unscorePlayer(' + playerIdx + ')" style="cursor:pointer;color:var(--red);font-size:14px;padding:0 4px">✕</span>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  }
+  
+  // Bottom button row: Recycle (left), Close, Score (right)
+  h += '<div class="row mt-16" style="gap:8px">';
+  if (isAdmin) {
+    h += '<button class="btn btn-sm" onclick="recycleObjective()" style="flex:0;color:var(--red);border-color:var(--red)" title="Replace with a new objective">♻</button>';
+  }
+  h += '<button class="btn" onclick="closeModal()" style="flex:1">Close</button>';
+  if (isAdmin) {
+    h += '<button class="btn btn-primary" onclick="openScoreList()" style="flex:0">Score</button>';
+  }
+  h += '</div>';
+  
+  document.getElementById('modal').innerHTML = h;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openScoreList() {
+  if (!currentObjective) return;
+  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  if (!o) return;
+  
+  var h = '<div style="text-align:center;margin-bottom:16px"><div class="gold" style="font-size:16px">Score Objective</div><div class="small dim mt-8">' + o.name + '</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  state.players.forEach(function(p, i) {
+    var alreadyScored = (o.scoredBy || []).indexOf(i) >= 0;
+    var disabled = alreadyScored ? 'disabled' : '';
+    var opacity = alreadyScored ? '0.4' : '1';
+    h += '<button class="btn" ' + disabled + ' onclick="scorePlayer(' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += p.name;
+    if (alreadyScored) h += ' <span class="small dim">(already scored)</span>';
+    h += '</button>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="openObjective(\'' + currentObjective.stageKey + '\',' + currentObjective.idx + ')">Back</button>';
+  
+  document.getElementById('modal').innerHTML = h;
+}
+
+function scorePlayer(playerIdx) {
+  if (!isAdmin || !currentObjective) return;
+  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  if (!o) return;
+  if (!o.scoredBy) o.scoredBy = [];
+  if (o.scoredBy.indexOf(playerIdx) >= 0) return;
+  o.scoredBy.push(playerIdx);
+  // Add VP to player
+  var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
+  state.players[playerIdx].vp = (state.players[playerIdx].vp || 0) + vpVal;
+  pushState();
+  // Refresh modal and underlying board
+  openObjective(currentObjective.stageKey, currentObjective.idx);
+  renderScore();
+  // Check win
+  if (state.players[playerIdx].vp >= state.vpGoal) {
+    setTimeout(function() {
+      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
+        closeModal();
+        endGame(state.players[playerIdx].name);
+      }
+    }, 100);
+  }
+}
+
+function unscorePlayer(playerIdx) {
+  if (!isAdmin || !currentObjective) return;
+  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  if (!o || !o.scoredBy) return;
+  var pos = o.scoredBy.indexOf(playerIdx);
+  if (pos < 0) return;
+  o.scoredBy.splice(pos, 1);
+  // Remove VP from player
+  var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
+  state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) - vpVal);
+  pushState();
+  openObjective(currentObjective.stageKey, currentObjective.idx);
+  renderScore();
+}
+
+function recycleObjective() {
+  if (!isAdmin || !currentObjective) return;
+  if (!confirm('Replace this objective with a random new one?\n\nThe current card will be removed and replaced. Any player who scored it will lose those VP.')) return;
+  
+  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  if (!o) return;
+  
+  // Refund VP to anyone who scored this
+  var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
+  (o.scoredBy || []).forEach(function(pi) {
+    if (state.players[pi]) {
+      state.players[pi].vp = Math.max(0, (state.players[pi].vp || 0) - vpVal);
+    }
+  });
+  
+  // Mark the old name as used so it can't come back this game
+  if (state.objectives.used.indexOf(o.name) < 0) state.objectives.used.push(o.name);
+  
+  // Find a new random objective from the same pool, not already used
+  var pool = currentObjective.stageKey === 'stage1' ? STAGE1_OBJECTIVES : STAGE2_OBJECTIVES;
+  var available = pool.filter(function(p) { return state.objectives.used.indexOf(p.name) < 0; });
+  if (!available.length) {
+    alert('No more objectives available in that pool.');
+    return;
+  }
+  var picked = available[Math.floor(Math.random() * available.length)];
+  state.objectives.used.push(picked.name);
+  
+  // Replace in same position, keeping revealed state
+  state.objectives[currentObjective.stageKey][currentObjective.idx] = {
+    name: picked.name,
+    desc: picked.desc,
+    revealed: true,  // recycled cards stay visible
+    scoredBy: []
+  };
+  
+  pushState();
+  openObjective(currentObjective.stageKey, currentObjective.idx);
+  renderScore();
+}
+
+window.openObjective = openObjective;
+window.openScoreList = openScoreList;
+window.scorePlayer = scorePlayer;
+window.unscorePlayer = unscorePlayer;
+window.recycleObjective = recycleObjective;
+
 function openColorPicker(playerIdx) {
   if (state.started) return;
   var p = state.players[playerIdx];
@@ -1834,9 +2002,13 @@ function startGame() {
   });
   // Pick 5 random stage 1 and 5 random stage 2 objectives, all face-down
   state.objectives = {
-    stage1: shuffle(STAGE1_OBJECTIVES).slice(0, 5).map(function(o, i) { return { name: o.name, desc: o.desc, revealed: i < 2 }; }),
-    stage2: shuffle(STAGE2_OBJECTIVES).slice(0, 5).map(function(o) { return { name: o.name, desc: o.desc, revealed: false }; })
+    stage1: shuffle(STAGE1_OBJECTIVES).slice(0, 5).map(function(o, i) { return { name: o.name, desc: o.desc, revealed: i < 2, scoredBy: [] }; }),
+    stage2: shuffle(STAGE2_OBJECTIVES).slice(0, 5).map(function(o) { return { name: o.name, desc: o.desc, revealed: false, scoredBy: [] }; }),
+    used: [] // tracks names already drawn/discarded so recycle doesn't repick
   };
+  // Mark all initially-drawn objectives as used
+  state.objectives.stage1.forEach(function(o) { state.objectives.used.push(o.name); });
+  state.objectives.stage2.forEach(function(o) { state.objectives.used.push(o.name); });
   setNav('score');
   pushState();
 }
