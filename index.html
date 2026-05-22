@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.011 -->
+<!-- TI4 Tracker 2.013 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.011';
+var VERSION = '2.013';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1306,8 +1306,7 @@ function renderScore() {
   if (isAdmin && !state.ended) {
     h += '<div class="panel"><div class="row">';
     h += '<button class="btn btn-primary" onclick="nextRound()">Next Round ▶</button>';
-    h += '<button class="btn btn-sm" onclick="forceSync()">📡 Sync</button>';
-    h += '<button class="btn btn-danger btn-sm" onclick="endGame()">⏹ End</button>';
+    h += '<button class="btn btn-danger btn-sm" onclick="endGame()">⏹ End Game</button>';
     h += '</div></div>';
   }
 
@@ -1320,29 +1319,22 @@ function renderScore() {
     h += '</div>';
   }
 
-  var sorted = state.players.slice().sort(function(a,b) { return b.vp - a.vp; });
-  sorted.forEach(function(p) {
-    var i = state.players.indexOf(p);
-    var pct = Math.min(100, (p.vp / state.vpGoal) * 100);
-    var fSafe = p.faction.replace(/'/g, "\\'");
-    h += '<div class="player-card">';
-    h += '<div class="player-row">';
-    h += '<div class="player-dot" style="background:' + p.color + '"></div>';
-    h += '<div style="flex:1;min-width:0">';
-    h += '<div class="player-name">' + p.name + '</div>';
-    h += '<div class="small dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.faction + '</div>';
-    h += '</div>';
-    h += '<div class="player-vp" style="color:' + p.color + '">' + p.vp + '</div>';
-    if (isAdmin && !state.ended) {
-      h += '<button class="vp-btn minus" onclick="vp(' + i + ',-1)">−</button>';
-      h += '<button class="vp-btn plus" onclick="vp(' + i + ',1)">+</button>';
-    }
-    h += '</div>';
-    h += '<div class="vp-bar"><div style="width:' + pct + '%;background:' + p.color + '"></div></div>';
+  // Horizontal score strip - sorted by VP, names in player order preserved
+  var n = state.players.length;
+  // Calculate font size that fits all players in a row
+  // For 8 players: smaller; for 2: larger
+  var scoreFontSize = Math.max(28, Math.min(64, Math.floor(80 - n * 5)));
+  var nameFontSize = 10;
+  
+  h += '<div class="panel"><div style="display:flex;gap:4px;justify-content:space-around;align-items:flex-end">';
+  state.players.forEach(function(p, i) {
+    h += '<div style="flex:1;text-align:center;min-width:0">';
+    h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1">' + p.vp + '</div>';
+    h += '<div style="font-size:' + nameFontSize + 'px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + p.name + '</div>';
     h += '</div>';
   });
-
-  h += '<div class="panel center small dim">Goal: ' + state.vpGoal + ' VP</div>';
+  h += '</div><div class="small dim center mt-8">Goal: ' + state.vpGoal + ' VP · Round ' + state.round + '</div></div>';
+  
   el.innerHTML = h;
 }
 
@@ -1351,7 +1343,7 @@ var TI4_COLORS = [
   { name: 'Purple',  hex: '#6b3fa0' },
   { name: 'Green',   hex: '#2e7d4f' },
   { name: 'Magenta', hex: '#c2348a' },
-  { name: 'Red',     hex: '#8e2c2c' },
+  { name: 'Red',     hex: '#c43030' },
   { name: 'Blue',    hex: '#2a5b8a' },
   { name: 'Orange',  hex: '#d9542b' },
   { name: 'Black',   hex: '#222222' },
@@ -1745,10 +1737,6 @@ function newGame() {
   if (isAdmin) pushState();
 }
 
-function forceSync() {
-  pushState().then(function() { alert('Synced to DB'); });
-}
-
 function setTechPlayer(i) {
   techPlayer = i;
   renderTech();
@@ -1792,7 +1780,6 @@ window.vp = vp;
 window.nextRound = nextRound;
 window.endGame = endGame;
 window.newGame = newGame;
-window.forceSync = forceSync;
 window.setTechPlayer = setTechPlayer;
 window.setTechFilter = setTechFilter;
 window.addTech = addTech;
