@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.013 -->
+<!-- TI4 Tracker 2.014 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.013';
+var VERSION = '2.014';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1322,9 +1322,9 @@ function renderScore() {
   // Horizontal score strip - sorted by VP, names in player order preserved
   var n = state.players.length;
   // Calculate font size that fits all players in a row
-  // For 8 players: smaller; for 2: larger
-  var scoreFontSize = Math.max(28, Math.min(64, Math.floor(80 - n * 5)));
-  var nameFontSize = 10;
+  // For 8 players: smaller; for 2: larger. +50% from previous.
+  var scoreFontSize = Math.max(42, Math.min(96, Math.floor((80 - n * 5) * 1.5)));
+  var nameFontSize = 12;
   
   h += '<div class="panel"><div style="display:flex;gap:4px;justify-content:space-around;align-items:flex-end">';
   state.players.forEach(function(p, i) {
