@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.022 -->
+<!-- TI4 Tracker 2.023 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -40,15 +40,15 @@ body {
 .screen.active { display: block; }
 .logo { font-size: 28px; color: var(--gold); text-align: center; letter-spacing: .1em; margin: 40px 0 8px; font-weight: 700; }
 .subtitle { font-size: 13px; color: var(--text-dim); text-align: center; margin-bottom: 32px; }
-.panel { background: rgba(26, 36, 64, 0.88); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; backdrop-filter: blur(2px); }
+.panel { background: rgba(26, 36, 64, 0.55); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; backdrop-filter: blur(2px); }
 .panel-title { font-size: 11px; letter-spacing: .15em; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-.btn { display: inline-block; padding: 12px 18px; border-radius: 6px; border: 1px solid var(--border2); background: var(--panel2); color: var(--text); font-size: 14px; cursor: pointer; text-align: center; }
+.btn { display: inline-block; padding: 12px 18px; border-radius: 6px; border: 1px solid var(--border2); background: rgba(36, 50, 84, 0.5); color: var(--text); font-size: 14px; cursor: pointer; text-align: center; backdrop-filter: blur(2px); }
 .btn-primary { background: rgba(201,168,76,.15); border-color: var(--gold); color: var(--gold); }
 .btn-danger { background: rgba(231,76,60,.1); border-color: var(--red); color: var(--red); }
 .btn-full { width: 100%; }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-input, select { background: var(--panel2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); padding: 10px 12px; font-size: 14px; width: 100%; -webkit-appearance: none; }
+input, select { background: rgba(36, 50, 84, 0.5); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); padding: 10px 12px; font-size: 14px; width: 100%; -webkit-appearance: none; }
 input:focus, select:focus { outline: none; border-color: var(--gold); }
 label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 4px; margin-top: 8px; }
 .row { display: flex; gap: 8px; align-items: center; }
@@ -63,7 +63,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .version { font-size: 10px; color: var(--text-dim); font-family: monospace; margin-bottom: 8px; }
 
 /* Score */
-.player-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+.player-card { background: rgba(36, 50, 84, 0.5); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; backdrop-filter: blur(2px); }
 .player-row { display: flex; align-items: center; gap: 10px; }
 .player-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .player-name { flex: 1; font-weight: 600; }
@@ -75,14 +75,14 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .vp-bar > div { height: 100%; transition: width .3s; }
 
 /* Nav */
-.nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); }
+.nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(26, 36, 64, 0.85); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); backdrop-filter: blur(6px); }
 .nav.visible { display: flex; }
 .nav-btn { flex: 1; padding: 10px; text-align: center; background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; }
 .nav-btn.active { color: var(--gold); }
 .nav-icon { display: block; font-size: 18px; margin-bottom: 2px; }
 
 /* Status bar */
-.status-bar { display: none; background: rgba(26, 36, 64, 0.92); border-bottom: 1px solid var(--border); padding: 8px 12px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.status-bar { display: none; background: rgba(26, 36, 64, 0.85); border-bottom: 1px solid var(--border); padding: 8px 12px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(6px); }
 .status-bar.visible { display: flex; }
 .round-display {
   position: absolute;
@@ -118,7 +118,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 /* Faction modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; }
 .modal-overlay.open { display: block; }
-.modal { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel); border-radius: 12px 12px 0 0; max-height: 85vh; overflow-y: auto; z-index: 101; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0)); }
+.modal { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(26, 36, 64, 0.95); border-radius: 12px 12px 0 0; max-height: 85vh; overflow-y: auto; z-index: 101; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0)); backdrop-filter: blur(8px); }
 .modal.open { display: block; }
 .modal.modal-center { top: 50%; bottom: auto; left: 50%; right: auto; transform: translate(-50%, -50%); border-radius: 12px; max-width: 320px; width: 90%; max-height: 90vh; padding: 16px; }
 .modal-section { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--gold); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--border); }
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.022';
+var VERSION = '2.023';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
