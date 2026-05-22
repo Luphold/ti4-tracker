@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.011 -->
+<!-- TI4 Tracker 1.012 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -224,7 +224,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.011</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.012</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -236,12 +236,12 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.011</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.012</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
           <input id="inp-key" type="text" placeholder="eyJ..." style="margin-bottom:16px">
-          <button id="btn-save-connect" class="btn btn-primary btn-full" onclick="doSaveConnect()">Save & Connect</button>
+          <button id="btn-save-connect" class="btn btn-primary btn-full" onclick="App.saveSupabaseConfig()">Save & Connect</button>
           <button class="btn btn-full mt-8" onclick="clearCacheAndReload()" style="border-color:var(--border);font-size:13px">↺ Clear Cache & Reload</button>
           <div class="text-sm text-dim mt-8" style="line-height:1.5">
             Get these from Supabase → Settings → API Keys.<br>
@@ -334,16 +334,16 @@
 
   <!-- Bottom nav -->
   <div id="nav">
-    <button class="nav-btn" onclick="App.showNav('score')" id="nav-score">
+    <button class="nav-btn" onclick="App.showNav(\'score\')" id="nav-score">
       <span class="nav-icon">🏆</span><span>Score</span>
     </button>
-    <button class="nav-btn" onclick="App.showNav('setup')" id="nav-setup">
+    <button class="nav-btn" onclick="App.showNav(\'setup\')" id="nav-setup">
       <span class="nav-icon">⚙</span><span>Setup</span>
     </button>
-    <button class="nav-btn" onclick="App.showNav('tech')" id="nav-tech">
+    <button class="nav-btn" onclick="App.showNav(\'tech\')" id="nav-tech">
       <span class="nav-icon">🔬</span><span>Tech</span>
     </button>
-    <button class="nav-btn" onclick="App.showNav('history')" id="nav-history">
+    <button class="nav-btn" onclick="App.showNav(\'history\')" id="nav-history">
       <span class="nav-icon">📋</span><span>History</span>
     </button>
   </div>
@@ -368,6 +368,7 @@ setTimeout(function() {
 </script>
 <script>
 // ===== DATA =====
+alert("Checkpoint: DATA starting");
 // TI4 Tracker — Game Data
 // Auto-extracted from ti4-tracker_29.html
 // Do not edit manually — regenerate if source changes
@@ -1362,6 +1363,7 @@ const LAWS = [
 
 
 // ===== STORAGE =====
+alert("Checkpoint: STORAGE starting");
 // TI4 Tracker — Local Storage (IndexedDB)
 // Handles settings, draft game state, and local history cache
 
@@ -1511,6 +1513,7 @@ async function clearHistory() {
 }
 
 // ===== SYNC =====
+alert("Checkpoint: SYNC starting");
 // TI4 Tracker — Supabase Sync Engine
 // Uses Realtime WebSocket with REST polling fallback
 
@@ -1699,8 +1702,7 @@ async function persistState(state) {
       { room_code: roomCode, state: state, updated_at: new Date().toISOString() },
       { onConflict: 'room_code' }
     );
-    if (error)
-    else
+    if (error) { /* persist failed */ }
   } catch(e) { }
 }
 
@@ -1761,6 +1763,7 @@ async function leaveRoom() {
 }
 
 // ===== GAME =====
+alert("Checkpoint: GAME starting");
 // TI4 Tracker — Game State & Logic
 
 // ── Default state factory ─────────────────────────────────────────────────
@@ -2001,6 +2004,7 @@ function formatMs(ms) {
 setTimeout(function() {
   console.log("initSync=", typeof window.initSync, "getState=", typeof window.getState);
 }, 100);
+alert("Block 3 finished. initSync=" + typeof window.initSync);
 </script>
 <script>
 // TI4 Tracker - All JS inlined
@@ -2008,8 +2012,6 @@ setTimeout(function() {
 </script>
 <script>
 /* TI4 Tracker App */
-window._block5Reached = true;
-alert('Block 5 starting. initSync=' + typeof window.initSync + ' getState=' + typeof window.getState);
 // Unregister old service workers and clear caches on every load
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -2099,8 +2101,8 @@ window.openFactionCard = function(factionName) {
   h += '<div class="cinzel" style="font-size:18px;color:var(--gold);margin-bottom:4px">' + lookupName + '</div>';
   if (isDual) {
     h += '<div style="display:flex;gap:8px;margin-bottom:12px">';
-    h += '<button onclick="window.switchDualSide('The Firmament')" class="btn btn-sm flex-1" style="' + (dualSide==='The Firmament'?'border-color:var(--gold);color:var(--gold)':'') + '">The Firmament</button>';
-    h += '<button onclick="window.switchDualSide('The Obsidian')" class="btn btn-sm flex-1" style="' + (dualSide==='The Obsidian'?'border-color:var(--gold);color:var(--gold)':'') + '">The Obsidian</button>';
+    h += '<button onclick="window.switchDualSide(\'The Firmament\')" class="btn btn-sm flex-1" style="' + (dualSide==='The Firmament'?'border-color:var(--gold);color:var(--gold)':'') + '">The Firmament</button>';
+    h += '<button onclick="window.switchDualSide(\'The Obsidian\')" class="btn btn-sm flex-1" style="' + (dualSide==='The Obsidian'?'border-color:var(--gold);color:var(--gold)':'') + '">The Obsidian</button>';
     h += '</div>';
   }
   h += '</div>';
@@ -2371,7 +2373,7 @@ function renderScore() {
   var el = document.getElementById('score-content');
   if (!el) return;
   if (!s.started) {
-    el.innerHTML = '<div class="panel" style="text-align:center;padding:40px"><div class="cinzel text-gold" style="font-size:16px;margin-bottom:8px">No game in progress</div><div class="text-dim text-sm">Go to Setup to start a game</div>'+(isAdmin?'<button class="btn btn-primary mt-16" onclick="App.showNav('setup')">Go to Setup</button>':'')+'</div>';
+    el.innerHTML = '<div class="panel" style="text-align:center;padding:40px"><div class="cinzel text-gold" style="font-size:16px;margin-bottom:8px">No game in progress</div><div class="text-dim text-sm">Go to Setup to start a game</div>'+(isAdmin?'<button class="btn btn-primary mt-16" onclick="App.showNav(\'setup\')">Go to Setup</button>':'')+'</div>';
     return;
   }
   var players = s.players.slice().sort(function(a,b){return b.vp-a.vp;});
@@ -2393,7 +2395,7 @@ function renderScore() {
     h += '<div class="score-row" style="margin-bottom:8px">';
     h += '<div class="score-color" style="background:'+p.color+'"></div>';
     h += '<div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="score-name">'+p.name+'</span>';
-    h += '<button onclick="window.openFactionCard(''+p.faction.replace(/'/g,"\'")+'')" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer">i</button></div>';
+    h += '<button onclick="window.openFactionCard(\''+p.faction.replace(/'/g,"\'")+'\''))" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer">i</button></div>';
     h += '<div class="text-sm text-dim">'+p.faction+'</div>';
     h += '<div class="vp-bar-wrap"><div class="vp-bar" style="width:'+pct+'%;background:'+p.color+'"></div></div></div>';
     h += '<div style="display:flex;align-items:center;gap:8px"><div class="score-vp" style="color:'+p.color+'">'+p.vp+'</div>';
@@ -2436,7 +2438,7 @@ function renderSetup() {
       '<div class="flex gap-8">'+
       (s.started?'<div style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px">'+p.faction+'</div>'
         :'<select style="flex:1" onchange="App.updatePlayerField('+i+','faction',this.value)">'+window.FACTIONS.map(function(f){return '<option'+(f===p.faction?' selected':'')+'>'+f+'</option>';}).join('')+'</select>')+
-      '<button onclick="window.openFactionCard(''+p.faction.replace(/'/g,"\'")+'''+')" class="btn btn-sm">i</button>'+
+      '<button onclick="window.openFactionCard(\''+p.faction.replace(/'/g,"\'")+'\'')'+')" class="btn btn-sm">i</button>'+
       '</div></div>';
   }).join('');
 }
@@ -2464,7 +2466,7 @@ function renderTech() {
       curEl.innerHTML = p.techs.map(function(name) {
         var t = window.TECHNOLOGIES.find(function(x){return x.name===name;});
         var type = t ? t.type : 'unit';
-        return '<span class="tech-chip '+type+'">'+name+(isAdmin?' <span onclick="App.removeTech(''+name.replace(/'/g,"\'")+'''+')" style="opacity:.6;cursor:pointer">x</span>':'')+'</span>';
+        return '<span class="tech-chip '+type+'">'+name+(isAdmin?' <span data-tech="'+name.replace(/"/g,'&quot;')+'" onclick="App.removeTech(this.dataset.tech)" style="opacity:.6;cursor:pointer">x</span>':'')+'</span>';
       }).join('');
     }
   }
@@ -2506,7 +2508,7 @@ function renderTechAddList() {
     var items = groups[type].map(function(t) {
       var greyed = t.type==='faction' && !myFT[t.name];
       var nm = t.name.replace(/'/g,"\'");
-      return '<div class="tech-add-item '+type+'" onclick="'+(isAdmin&&!greyed?'App.addTech(''+nm+'')':'void(0)')+'" style="'+(greyed?'opacity:0.3;cursor:default;':!isAdmin?'cursor:default;':'')+'" title="'+(t.desc||t.name)+'">'+(isAdmin&&!greyed?'+':'·')+' '+t.name+'</div>';
+      return '<div class="tech-add-item '+type+'" data-tech="'+nm.replace(/"/g,'&quot;')+'" onclick="'+(isAdmin&&!greyed?'App.addTech(this.dataset.tech)':'void(0)')+'" style="'+(greyed?'opacity:0.3;cursor:default;':!isAdmin?'cursor:default;':'')+'" title="'+(t.desc||t.name)+'">'+(isAdmin&&!greyed?'+':'·')+' '+t.name+'</div>';
     }).join('');
     return '<div class="tech-add-section"><div class="tech-add-label '+type+'">'+(TYPE_LABELS[type]||type)+'</div><div class="tech-add-grid">'+items+'</div></div>';
   }).join('');
