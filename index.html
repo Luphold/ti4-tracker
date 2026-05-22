@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.013 -->
+<!-- TI4 Tracker 1.014 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -224,7 +224,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.013</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.014</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -236,7 +236,7 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.013</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.014</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
@@ -368,7 +368,6 @@ setTimeout(function() {
 </script>
 <script>
 // ===== DATA =====
-alert("Checkpoint: DATA starting");
 // TI4 Tracker — Game Data
 // Auto-extracted from ti4-tracker_29.html
 // Do not edit manually — regenerate if source changes
@@ -1363,7 +1362,6 @@ const LAWS = [
 
 
 // ===== STORAGE =====
-alert("Checkpoint: STORAGE starting");
 // TI4 Tracker — Local Storage (IndexedDB)
 // Handles settings, draft game state, and local history cache
 
@@ -1513,7 +1511,6 @@ async function clearHistory() {
 }
 
 // ===== SYNC =====
-alert("Checkpoint: SYNC starting");
 // TI4 Tracker — Supabase Sync Engine
 // Uses Realtime WebSocket with REST polling fallback
 
@@ -1763,7 +1760,6 @@ async function leaveRoom() {
 }
 
 // ===== GAME =====
-alert("Checkpoint: GAME starting");
 // TI4 Tracker — Game State & Logic
 
 // ── Default state factory ─────────────────────────────────────────────────
@@ -2004,7 +2000,6 @@ function formatMs(ms) {
 setTimeout(function() {
   console.log("initSync=", typeof window.initSync, "getState=", typeof window.getState);
 }, 100);
-alert("Block 3 finished. initSync=" + typeof window.initSync);
 </script>
 <script>
 // TI4 Tracker - All JS inlined
@@ -2012,9 +2007,9 @@ alert("Block 3 finished. initSync=" + typeof window.initSync);
 </script>
 <script>
 /* TI4 Tracker App */
-alert('Block 5 line 1');
-window._block5Reached = true;
-alert('Block 5 starting. initSync=' + typeof window.initSync + ' getState=' + typeof window.getState);
+document.body.insertAdjacentHTML('afterbegin', '<div id="dbg" style="position:fixed;top:0;left:0;right:0;background:yellow;color:black;padding:10px;z-index:99999;font-size:12px;font-family:monospace">DBG: Block 5 line 1</div>');
+function dbg(msg) { var el = document.getElementById('dbg'); if(el) el.innerHTML += '<br>' + msg; }
+dbg('initSync=' + typeof window.initSync + ' getState=' + typeof window.getState);
 // Unregister old service workers and clear caches on every load
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -2157,6 +2152,7 @@ window.closeFactionCard = function() {
 };
 
 alert('About to define window.App');
+dbg('About to define window.App');
 window.App = {
   async saveSupabaseConfig() {
     alert("Button tapped! App=" + (typeof window.App) + " initSync=" + (typeof window.initSync));
