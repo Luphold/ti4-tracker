@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.014 -->
+<!-- TI4 Tracker 1.015 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -224,7 +224,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.014</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.015</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -236,7 +236,7 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.014</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.015</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
@@ -2007,9 +2007,20 @@ setTimeout(function() {
 </script>
 <script>
 /* TI4 Tracker App */
-document.body.insertAdjacentHTML('afterbegin', '<div id="dbg" style="position:fixed;top:0;left:0;right:0;background:yellow;color:black;padding:10px;z-index:99999;font-size:12px;font-family:monospace">DBG: Block 5 line 1</div>');
-function dbg(msg) { var el = document.getElementById('dbg'); if(el) el.innerHTML += '<br>' + msg; }
-dbg('initSync=' + typeof window.initSync + ' getState=' + typeof window.getState);
+window._b5_line1 = Date.now();
+window.App = window.App || {};
+window.App._loaded = "step1";
+
+function dbg(msg) {
+  var el = document.getElementById('dbg');
+  if (!el && document.body) {
+    document.body.insertAdjacentHTML('afterbegin', '<div id="dbg" style="position:fixed;top:0;left:0;right:0;background:yellow;color:black;padding:10px;z-index:99999;font-size:12px;font-family:monospace"></div>');
+    el = document.getElementById('dbg');
+  }
+  if (el) el.innerHTML += msg + '<br>';
+}
+dbg('Block 5 line 1 reached');
+dbg('initSync=' + typeof window.initSync);
 // Unregister old service workers and clear caches on every load
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(regs) {
