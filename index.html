@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.025 -->
+<!-- TI4 Tracker 2.026 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.025';
+var VERSION = '2.026';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1367,7 +1367,7 @@ function renderScore() {
   h += '<div class="panel"><div style="display:flex;gap:4px;justify-content:space-around;align-items:flex-end">';
   state.players.forEach(function(p, i) {
     h += '<div style="flex:1;text-align:center;min-width:0">';
-    h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1">' + p.vp + '</div>';
+    h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(255,255,255,0.5)">' + p.vp + '</div>';
     h += '<div style="font-size:' + nameFontSize + 'px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + p.name + '</div>';
     h += '</div>';
   });
