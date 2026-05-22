@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.020 -->
+<!-- TI4 Tracker 2.022 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,18 +9,38 @@
 <link rel="manifest" href="manifest.json">
 <style>
 :root {
-  --bg:#0a0e1a; --panel:#111827; --panel2:#1a2235;
-  --border:#2a3550; --border2:#3a4560;
-  --gold:#c9a84c; --text:#dde4f0; --text-dim:#7a8aaa;
+  --bg:#0a0e1a; --panel:#1a2440; --panel2:#243254;
+  --border:#3a4570; --border2:#4a5985;
+  --gold:#c9a84c; --text:#dde4f0; --text-dim:#8a9bbf;
   --green:#27ae60; --red:#e74c3c; --blue:#2980b9;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 15px; }
+html, body { height: 100%; color: var(--text); font-family: system-ui, sans-serif; font-size: 15px; }
+body {
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(80, 60, 180, 0.15), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(100, 50, 130, 0.12), transparent 50%),
+    radial-gradient(circle at 15% 80%, rgba(255,255,255,0.8) 0.5px, transparent 1.5px),
+    radial-gradient(circle at 75% 15%, rgba(255,255,255,0.9) 0.7px, transparent 1.8px),
+    radial-gradient(circle at 45% 60%, rgba(255,255,255,0.7) 0.4px, transparent 1.2px),
+    radial-gradient(circle at 88% 45%, rgba(180,220,255,0.9) 0.6px, transparent 1.5px),
+    radial-gradient(circle at 25% 50%, rgba(255,240,200,0.8) 0.5px, transparent 1.4px),
+    radial-gradient(circle at 60% 25%, rgba(255,255,255,0.7) 0.4px, transparent 1.2px),
+    radial-gradient(circle at 92% 80%, rgba(220,200,255,0.8) 0.5px, transparent 1.4px),
+    radial-gradient(circle at 8% 18%, rgba(255,255,255,0.6) 0.3px, transparent 1.1px),
+    radial-gradient(circle at 38% 88%, rgba(200,220,255,0.7) 0.4px, transparent 1.3px),
+    radial-gradient(circle at 65% 92%, rgba(255,255,255,0.8) 0.5px, transparent 1.4px),
+    radial-gradient(circle at 50% 10%, rgba(255,230,220,0.7) 0.4px, transparent 1.2px),
+    radial-gradient(circle at 12% 65%, rgba(255,255,255,0.6) 0.4px, transparent 1.2px),
+    linear-gradient(180deg, #0a0e1a 0%, #0e1428 50%, #0a0e1a 100%);
+  background-size: auto, auto, 200px 200px, 250px 250px, 300px 300px, 220px 220px, 280px 280px, 260px 260px, 240px 240px, 270px 270px, 290px 290px, 230px 230px, 310px 310px, 250px 250px, auto;
+  background-attachment: fixed;
+}
 .screen { display: none; min-height: 100vh; padding: 20px; }
 .screen.active { display: block; }
 .logo { font-size: 28px; color: var(--gold); text-align: center; letter-spacing: .1em; margin: 40px 0 8px; font-weight: 700; }
 .subtitle { font-size: 13px; color: var(--text-dim); text-align: center; margin-bottom: 32px; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.panel { background: rgba(26, 36, 64, 0.88); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; backdrop-filter: blur(2px); }
 .panel-title { font-size: 11px; letter-spacing: .15em; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 .btn { display: inline-block; padding: 12px 18px; border-radius: 6px; border: 1px solid var(--border2); background: var(--panel2); color: var(--text); font-size: 14px; cursor: pointer; text-align: center; }
 .btn-primary { background: rgba(201,168,76,.15); border-color: var(--gold); color: var(--gold); }
@@ -62,8 +82,18 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .nav-icon { display: block; font-size: 18px; margin-bottom: 2px; }
 
 /* Status bar */
-.status-bar { display: none; background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px 12px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.status-bar { display: none; background: rgba(26, 36, 64, 0.92); border-bottom: 1px solid var(--border); padding: 8px 12px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
 .status-bar.visible { display: flex; }
+.round-display {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #5db8ff;
+  text-shadow: 0 0 12px rgba(93, 184, 255, 0.6), 0 0 4px rgba(93, 184, 255, 0.8);
+}
 .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; margin-right: 6px; }
 .conn-dot.on { background: var(--green); }
 
@@ -90,6 +120,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .modal-overlay.open { display: block; }
 .modal { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel); border-radius: 12px 12px 0 0; max-height: 85vh; overflow-y: auto; z-index: 101; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0)); }
 .modal.open { display: block; }
+.modal.modal-center { top: 50%; bottom: auto; left: 50%; right: auto; transform: translate(-50%, -50%); border-radius: 12px; max-width: 320px; width: 90%; max-height: 90vh; padding: 16px; }
 .modal-section { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--gold); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--border); }
 .modal-text { font-size: 13px; line-height: 1.5; margin-bottom: 6px; padding-left: 8px; border-left: 2px solid var(--border2); }
 
@@ -142,9 +173,10 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 </div>
 
 <!-- Status bar (shown in game) -->
-<div id="status-bar" class="status-bar">
-  <div onclick="showRoomCode()" style="cursor:pointer"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
-  <div class="small dim" id="round-display">Round 1</div>
+<div id="status-bar" class="status-bar" style="position:sticky;top:0;justify-content:space-between">
+  <div onclick="showRoomCode()" style="cursor:pointer;z-index:1"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
+  <div class="round-display" id="round-display">Round 1</div>
+  <div style="z-index:1;visibility:hidden" class="small">Room: ABCDEF</div>
 </div>
 
 <!-- Score screen -->
@@ -210,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.020';
+var VERSION = '2.022';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1734,7 +1766,9 @@ function showRoomCode() {
 window.showRoomCode = showRoomCode;
 
 function closeModal() {
-  document.getElementById('modal').classList.remove('open');
+  var m = document.getElementById('modal');
+  m.classList.remove('open');
+  m.classList.remove('modal-center');
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
@@ -1749,22 +1783,38 @@ function openObjective(stageKey, idx) {
   var accent = stage === 1 ? '#d97706' : '#3a8bce';
   var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
   
-  var h = '<div style="background:#0a1525;border:3px solid ' + accent + ';border-radius:12px;padding:20px;text-align:center;box-shadow:0 0 20px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.4) inset">';
-  h += '<div style="font-weight:700;color:' + accent + ';font-size:18px;letter-spacing:.1em;padding:8px 0;line-height:1.2">' + o.name + '</div>';
-  h += '<div style="color:#dde4f0;font-size:14px;padding:20px 8px;line-height:1.5">' + o.desc + '</div>';
-  h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:32px;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:8px auto">' + stage + '</div>';
+  // Card-shaped enlarged display: scale ~2.5x of the small card (120px → 280px wide, with same 2:3 aspect)
+  // Width ~280px, height ~420px
+  var h = '<div style="position:relative;width:100%;max-width:280px;margin:0 auto">';
+  h += '<div style="background:#0a1525;border:3px solid ' + accent + ';border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;aspect-ratio:2/3;box-shadow:0 0 24px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.5) inset, 0 0 32px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.4)">';
+  // Title
+  h += '<div style="font-weight:700;color:' + accent + ';font-size:18px;letter-spacing:.08em;padding:6px 0;line-height:1.2;min-height:50px;display:flex;align-items:center;justify-content:center">' + o.name + '</div>';
+  // Description
+  h += '<div style="color:#dde4f0;font-size:14px;flex:1;display:flex;align-items:center;justify-content:center;padding:8px;line-height:1.4">' + o.desc + '</div>';
+  // VP badge at bottom
+  h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:28px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px">' + stage + '</div>';
   h += '<div style="color:' + accent + ';font-size:10px;letter-spacing:.15em;font-weight:700">' + vpText + '</div>';
   h += '</div>';
-  
-  // Scored by section
+  // Color circles stacked on right edge of enlarged card
   if (o.scoredBy && o.scoredBy.length) {
-    h += '<div class="mt-16"><div class="small dim">Scored by:</div>';
-    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    h += '<div style="position:absolute;right:-12px;top:8px;display:flex;flex-direction:column;gap:3px">';
+    o.scoredBy.forEach(function(playerIdx) {
+      var p = state.players[playerIdx];
+      if (p) h += '<div style="width:22px;height:22px;background:' + p.color + ';border:2px solid rgba(255,255,255,.5);border-radius:50%"></div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';  // end card wrapper
+  
+  // Scored-by names list (admin can tap ✕ to remove)
+  if (o.scoredBy && o.scoredBy.length) {
+    h += '<div class="mt-16"><div class="small dim center">Scored by:</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px">';
     o.scoredBy.forEach(function(playerIdx) {
       var p = state.players[playerIdx];
       if (!p) return;
       h += '<div style="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border2);border-radius:16px;padding:4px 10px">';
-      h += '<div style="width:12px;height:12px;background:' + p.color + ';border-radius:50%"></div>';
+      h += '<div style="width:10px;height:10px;background:' + p.color + ';border-radius:50%"></div>';
       h += '<span style="color:' + p.color + ';font-size:12px;font-weight:600">' + p.name + '</span>';
       if (isAdmin) h += '<span onclick="event.stopPropagation();unscorePlayer(' + playerIdx + ')" style="cursor:pointer;color:var(--red);font-size:14px;padding:0 4px">✕</span>';
       h += '</div>';
@@ -1772,7 +1822,7 @@ function openObjective(stageKey, idx) {
     h += '</div></div>';
   }
   
-  // Bottom button row: Recycle (left), Close, Score (right)
+  // Bottom buttons row
   h += '<div class="row mt-16" style="gap:8px">';
   if (isAdmin) {
     h += '<button class="btn btn-sm" onclick="recycleObjective()" style="flex:0;color:var(--red);border-color:var(--red)" title="Replace with a new objective">♻</button>';
@@ -1783,8 +1833,10 @@ function openObjective(stageKey, idx) {
   }
   h += '</div>';
   
-  document.getElementById('modal').innerHTML = h;
-  document.getElementById('modal').classList.add('open');
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
   document.getElementById('modal-overlay').classList.add('open');
 }
 
