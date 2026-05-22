@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.007 -->
+<!-- TI4 Tracker 2.008 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.007';
+var VERSION = '2.008';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1274,15 +1274,10 @@ function showScreen(id) {
 }
 
 function setNav(tab) {
-  // Guests can't access setup
-  if (!isAdmin && tab === 'setup') tab = 'score';
   currentNav = tab;
   var btns = document.querySelectorAll('.nav-btn');
   for (var i = 0; i < btns.length; i++) {
-    var btnTab = btns[i].getAttribute('data-nav');
-    // Hide setup tab for guests
-    btns[i].style.display = (!isAdmin && btnTab === 'setup') ? 'none' : '';
-    btns[i].classList.toggle('active', btnTab === tab);
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-nav') === tab);
   }
   showScreen('screen-' + tab);
   renderAll();
@@ -1365,34 +1360,38 @@ var TI4_COLORS = [
 
 function renderSetup() {
   var el = document.getElementById('setup-players');
+  var readonly = !isAdmin; // Guests can view but not modify
+  
   document.getElementById('vp-goal').value = state.vpGoal;
-  document.getElementById('vp-goal').disabled = state.started;
-  document.getElementById('btn-add-player').disabled = state.started || state.players.length >= 8;
+  document.getElementById('vp-goal').disabled = state.started || readonly;
+  document.getElementById('btn-add-player').disabled = state.started || readonly || state.players.length >= 8;
+  document.getElementById('btn-add-player').style.display = readonly ? 'none' : '';
   document.getElementById('btn-add-player').textContent = state.players.length >= 8 ? 'Max 8 players' : '+ Add Player (' + state.players.length + '/8)';
-  document.getElementById('btn-start').disabled = state.started || state.players.length < 2;
-  document.getElementById('btn-start').style.display = state.started ? 'none' : '';
+  document.getElementById('btn-start').disabled = state.started || readonly || state.players.length < 2;
+  document.getElementById('btn-start').style.display = (state.started || readonly) ? 'none' : '';
 
   el.innerHTML = state.players.map(function(p, i) {
     var opts = FACTIONS.map(function(f) { return '<option' + (f === p.faction ? ' selected' : '') + '>' + f + '</option>'; }).join('');
     var colorInfo = TI4_COLORS.find(function(c) { return c.hex === p.color; });
     var colorName = colorInfo ? colorInfo.name : 'none';
     
-    // Color button - shows current color or empty circle
+    // Color button — empty circle or filled. Disabled if guest or game started.
+    var locked = state.started || readonly;
     var colorStyle = p.color
       ? 'background:' + p.color + ';border:2px solid var(--gold)'
       : 'background:transparent;border:2px dashed var(--text-dim)';
-    var colorBtn = '<button onclick="openColorPicker(' + i + ')" ' + (state.started ? 'disabled' : '') +
-      ' style="flex:0 0 36px;width:36px;height:36px;border-radius:50%;' + colorStyle + ';cursor:' + (state.started ? 'default' : 'pointer') + ';padding:0" title="' + colorName + '"></button>';
+    var colorBtn = '<button onclick="openColorPicker(' + i + ')" ' + (locked ? 'disabled' : '') +
+      ' style="flex:0 0 36px;width:36px;height:36px;border-radius:50%;' + colorStyle + ';cursor:' + (locked ? 'default' : 'pointer') + ';padding:0" title="' + colorName + '"></button>';
     
     return '<div class="player-card">' +
       '<div class="row">' +
-      '<input value="' + p.name + '" onchange="updatePlayer(' + i + ',\'name\',this.value)" placeholder="Name" ' + (state.ended ? 'disabled' : '') + '>' +
+      '<input value="' + p.name + '" onchange="updatePlayer(' + i + ',\'name\',this.value)" placeholder="Name" ' + (state.ended || readonly ? 'disabled' : '') + '>' +
       colorBtn +
-      (state.started ? '' : '<button class="btn btn-sm" onclick="removePlayer(' + i + ')" style="flex:0;color:var(--red)">✕</button>') +
+      (state.started || readonly ? '' : '<button class="btn btn-sm" onclick="removePlayer(' + i + ')" style="flex:0;color:var(--red)">✕</button>') +
       '</div>' +
       '<div style="margin-top:8px">' +
-      (state.started 
-        ? '<div style="font-size:11px;color:var(--text-dim)">Faction (locked)</div><div class="row"><div class="gold" style="padding:8px 0;flex:1">' + p.faction + '</div><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Faction Sheet</button></div>'
+      (state.started || readonly
+        ? '<div style="font-size:11px;color:var(--text-dim)">Faction' + (state.started ? ' (locked)' : '') + '</div><div class="row"><div class="gold" style="padding:8px 0;flex:1">' + p.faction + '</div><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Faction Sheet</button></div>'
         : '<div class="row"><select onchange="updatePlayer(' + i + ',\'faction\',this.value)" style="flex:1">' + opts + '</select><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Sheet</button></div>'
       ) +
       '</div>' +
@@ -1618,7 +1617,7 @@ function pickColor(playerIdx, hex) {
 // Game actions
 // =============================================================================
 function addPlayer() {
-  if (state.started || state.players.length >= 8) return;
+  if (!isAdmin || state.started || state.players.length >= 8) return;
   state.players.push({
     name: 'Player ' + (state.players.length + 1),
     faction: FACTIONS[state.players.length % FACTIONS.length],
@@ -1631,7 +1630,7 @@ function addPlayer() {
 }
 
 function removePlayer(i) {
-  if (state.started) return;
+  if (!isAdmin || state.started) return;
   state.players.splice(i, 1);
   // Renumber default "Player N" names
   state.players.forEach(function(p, idx) {
@@ -1644,6 +1643,7 @@ function removePlayer(i) {
 }
 
 function updatePlayer(i, field, value) {
+  if (!isAdmin) return;
   // After game ends, nothing is editable
   if (state.ended) return;
   // After game starts, only name is editable (not color/faction)
