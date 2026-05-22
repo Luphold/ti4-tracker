@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.002 -->
+<!-- TI4 Tracker 2.003 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -206,7 +206,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.002';
+var VERSION = '2.003';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger
@@ -1338,6 +1338,18 @@ function renderScore() {
   el.innerHTML = h;
 }
 
+// Official TI4 ship colors
+var TI4_COLORS = [
+  { name: 'Purple',  hex: '#6b3fa0' },
+  { name: 'Green',   hex: '#2e7d4f' },
+  { name: 'Magenta', hex: '#c2348a' },
+  { name: 'Red',     hex: '#8e2c2c' },
+  { name: 'Blue',    hex: '#2a5b8a' },
+  { name: 'Orange',  hex: '#d9542b' },
+  { name: 'Black',   hex: '#222222' },
+  { name: 'Yellow',  hex: '#e0b62c' }
+];
+
 function renderSetup() {
   var el = document.getElementById('setup-players');
   document.getElementById('vp-goal').value = state.vpGoal;
@@ -1345,16 +1357,38 @@ function renderSetup() {
   document.getElementById('btn-add-player').disabled = state.started || state.players.length >= 8;
   document.getElementById('btn-add-player').textContent = state.players.length >= 8 ? 'Max 8 players' : '+ Add Player (' + state.players.length + '/8)';
   document.getElementById('btn-start').disabled = state.started || state.players.length < 2;
+  document.getElementById('btn-start').style.display = state.started ? 'none' : '';
 
   el.innerHTML = state.players.map(function(p, i) {
     var opts = FACTIONS.map(function(f) { return '<option' + (f === p.faction ? ' selected' : '') + '>' + f + '</option>'; }).join('');
+    
+    // Build color swatches - only show unused colors + the player's own current color
+    var usedColors = state.players.map(function(pp, idx) { return idx === i ? null : pp.color; });
+    var swatches = TI4_COLORS.map(function(c) {
+      var used = usedColors.indexOf(c.hex) >= 0;
+      var selected = p.color === c.hex;
+      var size = selected ? 32 : 28;
+      var border = selected ? '3px solid var(--gold)' : '1px solid var(--border2)';
+      var opacity = used ? '0.2' : '1';
+      var pointer = (used || state.ended) ? 'default' : 'pointer';
+      var click = (used || state.ended) ? '' : 'onclick="updatePlayer(' + i + ',\'color\',\'' + c.hex + '\')"';
+      return '<span ' + click + ' style="display:inline-block;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + c.hex + ';border:' + border + ';opacity:' + opacity + ';cursor:' + pointer + ';margin:2px" title="' + c.name + (used ? ' (taken)' : '') + '"></span>';
+    }).join('');
+    
+    // Name is editable until game ends, faction locked when game starts
     return '<div class="player-card">' +
       '<div class="row">' +
-      '<input value="' + p.name + '" onchange="updatePlayer(' + i + ',\'name\',this.value)" placeholder="Name" ' + (state.started ? 'disabled' : '') + '>' +
-      '<input type="color" value="' + p.color + '" style="width:44px;flex:0 0 44px" onchange="updatePlayer(' + i + ',\'color\',this.value)" ' + (state.started ? 'disabled' : '') + '>' +
+      '<input value="' + p.name + '" onchange="updatePlayer(' + i + ',\'name\',this.value)" placeholder="Name" ' + (state.ended ? 'disabled' : '') + '>' +
       (state.started ? '' : '<button class="btn btn-sm" onclick="removePlayer(' + i + ')" style="flex:0;color:var(--red)">✕</button>') +
       '</div>' +
-      '<select onchange="updatePlayer(' + i + ',\'faction\',this.value)" ' + (state.started ? 'disabled' : '') + ' class="mt-8">' + opts + '</select>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Color' + (state.started ? ' (locked)' : '') + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">' + swatches + '</div>' +
+      '<div style="margin-top:8px">' +
+      (state.started 
+        ? '<div style="font-size:11px;color:var(--text-dim)">Faction (locked)</div><div class="gold" style="padding:8px 0">' + p.faction + '</div>'
+        : '<select onchange="updatePlayer(' + i + ',\'faction\',this.value)">' + opts + '</select>'
+      ) +
+      '</div>' +
       '</div>';
   }).join('');
 }
@@ -1524,13 +1558,12 @@ function closeModal() {
 // =============================================================================
 function addPlayer() {
   if (state.started || state.players.length >= 8) return;
-  var colors = ['#e74c3c','#2980b9','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#16a085'];
   var used = state.players.map(function(p) { return p.color; });
-  var color = colors.find(function(c) { return used.indexOf(c) < 0; }) || '#888';
+  var color = TI4_COLORS.find(function(c) { return used.indexOf(c.hex) < 0; });
   state.players.push({
     name: 'Player ' + (state.players.length + 1),
     faction: FACTIONS[state.players.length % FACTIONS.length],
-    color: color,
+    color: color ? color.hex : TI4_COLORS[0].hex,
     vp: 0,
     techs: []
   });
@@ -1546,8 +1579,12 @@ function removePlayer(i) {
 }
 
 function updatePlayer(i, field, value) {
-  if (state.started && field !== 'name' && field !== 'color') return;
+  // After game ends, nothing is editable
+  if (state.ended) return;
+  // After game starts, only name is editable (not color/faction)
+  if (state.started && field !== 'name') return;
   state.players[i][field] = value;
+  renderSetup();
   if (isAdmin) pushState();
 }
 
