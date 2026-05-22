@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.009 -->
+<!-- TI4 Tracker 2.010 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.009';
+var VERSION = '2.010';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1515,7 +1515,11 @@ function showFaction(name) {
     h += '<div class="modal-section">Faction Abilities</div>';
     d.abilities.forEach(function(a) {
       var ci = a.indexOf(':');
-      h += '<div class="modal-text" style="color:#c98ee8">' + (ci > 0 ? '<b>' + a.slice(0, ci) + ':</b> ' + a.slice(ci+1).trim() : a) + '</div>';
+      if (ci > 0) {
+        h += '<div class="modal-text"><b style="color:#c98ee8">' + a.slice(0, ci) + ':</b> ' + a.slice(ci+1).trim() + '</div>';
+      } else {
+        h += '<div class="modal-text">' + a + '</div>';
+      }
     });
   }
   if (d.factionTechs && d.factionTechs.length) {
@@ -1527,17 +1531,38 @@ function showFaction(name) {
   // Faction-specific units (before flagship)
   if (d.units && d.units.length) {
     h += '<div class="modal-section">Faction-Specific Units</div>';
-    d.units.forEach(function(u) { h += '<div class="modal-text" style="color:#6db8e8">' + u + '</div>'; });
+    d.units.forEach(function(u) {
+      var ci = u.indexOf(':');
+      if (ci > 0) {
+        h += '<div class="modal-text"><b style="color:#6db8e8">' + u.slice(0, ci) + ':</b> ' + u.slice(ci+1).trim() + '</div>';
+      } else {
+        h += '<div class="modal-text">' + u + '</div>';
+      }
+    });
   }
   if (d.flagship) {
     h += '<div class="modal-section">Flagship</div>';
     var fs = Array.isArray(d.flagship) ? d.flagship : [d.flagship];
-    fs.forEach(function(f) { h += '<div class="modal-text" style="color:#6db8e8">' + f + '</div>'; });
+    fs.forEach(function(f) {
+      var ci = f.indexOf(':');
+      if (ci > 0) {
+        h += '<div class="modal-text"><b style="color:#6db8e8">' + f.slice(0, ci) + ':</b> ' + f.slice(ci+1).trim() + '</div>';
+      } else {
+        h += '<div class="modal-text">' + f + '</div>';
+      }
+    });
   }
   if (d.mech) {
     h += '<div class="modal-section">Mech</div>';
     var ms = Array.isArray(d.mech) ? d.mech : [d.mech];
-    ms.forEach(function(m) { h += '<div class="modal-text" style="color:#6db8e8">' + m + '</div>'; });
+    ms.forEach(function(m) {
+      var ci = m.indexOf(':');
+      if (ci > 0) {
+        h += '<div class="modal-text"><b style="color:#6db8e8">' + m.slice(0, ci) + ':</b> ' + m.slice(ci+1).trim() + '</div>';
+      } else {
+        h += '<div class="modal-text">' + m + '</div>';
+      }
+    });
   }
   if (d.leaders) {
     h += '<div class="modal-section">Leaders</div>';
