@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 1.010 -->
+<!-- TI4 Tracker 1.011 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -224,7 +224,7 @@
       <div class="panel">
         <div class="panel-title">Connect to Supabase</div>
         <div id="supabase-configured" style="display:none">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.010</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.011</div>
           <div class="text-sm text-dim mb-8" id="supabase-url-display"></div>
           <div class="flex gap-8">
             <button class="btn btn-full btn-primary" id="btn-admin" onclick="App.enterAsAdmin()">Enter as Admin</button>
@@ -236,7 +236,7 @@
           </div>
         </div>
         <div id="supabase-setup">
-          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.010</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;font-family:monospace">v1.011</div>
           <label>Supabase Project URL</label>
           <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="margin-bottom:10px">
           <label>Supabase Anon Key</label>
@@ -2008,6 +2008,8 @@ setTimeout(function() {
 </script>
 <script>
 /* TI4 Tracker App */
+window._block5Reached = true;
+alert('Block 5 starting. initSync=' + typeof window.initSync + ' getState=' + typeof window.getState);
 // Unregister old service workers and clear caches on every load
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(regs) {
