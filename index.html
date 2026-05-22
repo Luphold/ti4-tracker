@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.027 -->
+<!-- TI4 Tracker 2.028 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.027';
+var VERSION = '2.028';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1166,7 +1166,9 @@ var state = {
   objectives: {
     stage1: [],  // 5 picks from STAGE1_OBJECTIVES: [{name, desc, revealed:bool}]
     stage2: []   // 5 picks from STAGE2_OBJECTIVES
-  }
+  },
+  // Secret objectives scored: [{name, type, playerIdx}]
+  secretsScored: []
 };
 
 var isAdmin = false;
@@ -1381,6 +1383,38 @@ function renderScore() {
     h += renderObjectiveRow(state.objectives.stage2, 2);
     h += '</div>';
   }
+  
+  // Secret objectives panel
+  h += '<div class="panel">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Secret Objectives</div>';
+  if (isAdmin) {
+    h += '<button class="btn btn-sm btn-primary" onclick="openSecretPicker()">+ Score Secret</button>';
+  }
+  h += '</div>';
+  
+  if (!state.secretsScored || !state.secretsScored.length) {
+    h += '<div class="small dim center" style="padding:8px">No secret objectives scored yet</div>';
+  } else {
+    h += '<div style="display:flex;flex-direction:column;gap:4px">';
+    state.secretsScored.forEach(function(s, idx) {
+      var p = state.players[s.playerIdx];
+      if (!p) return;
+      var typeColor = s.type === 'Status' ? '#3a8bce' : s.type === 'Action' ? '#d97706' : '#a569bd';
+      h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-radius:6px;padding:6px 10px">';
+      h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.4);border-radius:50%;flex-shrink:0"></div>';
+      h += '<div style="flex:1;min-width:0">';
+      h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
+      h += '<div style="font-size:9px;color:' + typeColor + ';letter-spacing:.08em">' + p.name + ' · ' + s.type + '</div>';
+      h += '</div>';
+      if (isAdmin) {
+        h += '<button onclick="removeSecret(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
   
   el.innerHTML = h;
 }
@@ -1944,6 +1978,112 @@ function recycleObjective() {
   renderScore();
 }
 
+function openSecretPicker() {
+  if (!isAdmin) return;
+  // Get list of secrets not yet scored
+  var usedNames = (state.secretsScored || []).map(function(s) { return s.name; });
+  var available = SECRET_OBJECTIVES.filter(function(s) { return usedNames.indexOf(s.name) < 0; });
+  
+  if (!available.length) {
+    alert('All secret objectives have already been scored.');
+    return;
+  }
+  
+  // Group by type: Agenda, Status, Action (in that order). Alphabetize within group.
+  var typeOrder = ['Agenda', 'Status', 'Action'];
+  var grouped = {};
+  typeOrder.forEach(function(t) { grouped[t] = []; });
+  available.forEach(function(s) {
+    if (!grouped[s.type]) grouped[s.type] = [];
+    grouped[s.type].push(s);
+  });
+  // Sort each group alphabetically
+  Object.keys(grouped).forEach(function(t) {
+    grouped[t].sort(function(a, b) { return a.name.localeCompare(b.name); });
+  });
+  
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Choose Secret Objective</div></div>';
+  typeOrder.forEach(function(t) {
+    if (!grouped[t] || !grouped[t].length) return;
+    var typeColor = t === 'Status' ? '#3a8bce' : t === 'Action' ? '#d97706' : '#a569bd';
+    h += '<div style="margin-bottom:10px">';
+    h += '<div style="font-size:10px;letter-spacing:.15em;color:' + typeColor + ';text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px">' + t + '</div>';
+    grouped[t].forEach(function(s) {
+      var safeName = s.name.replace(/'/g, "\\'");
+      h += '<div onclick="chooseSecretPlayer(\'' + safeName + '\',\'' + s.type + '\')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;margin-bottom:3px;cursor:pointer;background:rgba(36, 50, 84, 0.3);font-size:13px">' + s.name + '</div>';
+    });
+    h += '</div>';
+  });
+  h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function chooseSecretPlayer(secretName, secretType) {
+  if (!isAdmin) return;
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Score Secret</div><div class="small dim mt-8">' + secretName + '</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  state.players.forEach(function(p, i) {
+    var safeName = secretName.replace(/'/g, "\\'");
+    h += '<button class="btn" onclick="confirmSecretScore(\'' + safeName + '\',\'' + secretType + '\',' + i + ')" style="border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.6);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += p.name;
+    h += '</button>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="openSecretPicker()">Back</button>';
+  
+  document.getElementById('modal').innerHTML = h;
+}
+
+function confirmSecretScore(secretName, secretType, playerIdx) {
+  if (!isAdmin) return;
+  // Block double-score
+  var already = (state.secretsScored || []).find(function(s) { return s.name === secretName; });
+  if (already) {
+    alert('This secret has already been scored.');
+    return;
+  }
+  if (!state.secretsScored) state.secretsScored = [];
+  state.secretsScored.push({ name: secretName, type: secretType, playerIdx: playerIdx });
+  // Add 1 VP
+  state.players[playerIdx].vp = (state.players[playerIdx].vp || 0) + 1;
+  closeModal();
+  pushState();
+  renderScore();
+  if (state.players[playerIdx].vp >= state.vpGoal) {
+    setTimeout(function() {
+      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
+        endGame(state.players[playerIdx].name);
+      }
+    }, 100);
+  }
+}
+
+function removeSecret(idx) {
+  if (!isAdmin) return;
+  if (!state.secretsScored || !state.secretsScored[idx]) return;
+  if (!confirm('Remove this secret objective scoring?')) return;
+  var entry = state.secretsScored[idx];
+  // Refund VP
+  if (state.players[entry.playerIdx]) {
+    state.players[entry.playerIdx].vp = Math.max(0, (state.players[entry.playerIdx].vp || 0) - 1);
+  }
+  state.secretsScored.splice(idx, 1);
+  pushState();
+  renderScore();
+}
+
+window.openSecretPicker = openSecretPicker;
+window.chooseSecretPlayer = chooseSecretPlayer;
+window.confirmSecretScore = confirmSecretScore;
+window.removeSecret = removeSecret;
+
+
 window.openObjective = openObjective;
 window.openScoreList = openScoreList;
 window.scorePlayer = scorePlayer;
@@ -2062,6 +2202,7 @@ function startGame() {
   // Mark all initially-drawn objectives as used
   state.objectives.stage1.forEach(function(o) { state.objectives.used.push(o.name); });
   state.objectives.stage2.forEach(function(o) { state.objectives.used.push(o.name); });
+  state.secretsScored = [];
   setNav('score');
   pushState();
 }
@@ -2138,7 +2279,7 @@ window.tempAutoColor = tempAutoColor;
 
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [] };
   setNav('setup');
   if (isAdmin) pushState();
 }
