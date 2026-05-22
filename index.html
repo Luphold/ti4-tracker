@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.005 -->
+<!-- TI4 Tracker 2.006 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -143,7 +143,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 
 <!-- Status bar (shown in game) -->
 <div id="status-bar" class="status-bar">
-  <div><span class="conn-dot" id="conn-dot"></span><span class="small dim" id="room-display">Room: —</span></div>
+  <div onclick="showRoomCode()" style="cursor:pointer"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
   <div class="small dim" id="round-display">Round 1</div>
 </div>
 
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.005';
+var VERSION = '2.006';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1329,12 +1329,13 @@ function renderScore() {
   sorted.forEach(function(p) {
     var i = state.players.indexOf(p);
     var pct = Math.min(100, (p.vp / state.vpGoal) * 100);
+    var fSafe = p.faction.replace(/'/g, "\\'");
     h += '<div class="player-card">';
     h += '<div class="player-row">';
     h += '<div class="player-dot" style="background:' + p.color + '"></div>';
-    h += '<div style="flex:1">';
-    h += '<div class="player-name">' + p.name + ' <span class="small dim" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="cursor:pointer">ⓘ</span></div>';
-    h += '<div class="small dim">' + p.faction + '</div>';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div class="player-name">' + p.name + '</div>';
+    h += '<div class="small dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.faction + '</div>';
     h += '</div>';
     h += '<div class="player-vp" style="color:' + p.color + '">' + p.vp + '</div>';
     if (isAdmin && !state.ended) {
@@ -1343,6 +1344,7 @@ function renderScore() {
     }
     h += '</div>';
     h += '<div class="vp-bar"><div style="width:' + pct + '%;background:' + p.color + '"></div></div>';
+    h += '<button class="btn btn-sm mt-8" onclick="showFaction(\'' + fSafe + '\')" style="width:100%">📜 Faction Sheet</button>';
     h += '</div>';
   });
 
@@ -1553,6 +1555,20 @@ function showFaction(name) {
   document.getElementById('modal').classList.add('open');
   document.getElementById('modal-overlay').classList.add('open');
 }
+
+function showRoomCode() {
+  if (!roomCode) return;
+  var h = '<div style="text-align:center;padding:20px 0">';
+  h += '<div class="small dim" style="letter-spacing:.15em">ROOM CODE</div>';
+  h += '<div class="gold" style="font-size:64px;font-weight:700;letter-spacing:.15em;margin:20px 0;font-family:monospace">' + roomCode + '</div>';
+  h += '<div class="small dim">Share this code with guests to join</div>';
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+  document.getElementById('modal').innerHTML = h;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+window.showRoomCode = showRoomCode;
 
 function closeModal() {
   document.getElementById('modal').classList.remove('open');
