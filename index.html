@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.006 -->
+<!-- TI4 Tracker 2.007 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,7 +209,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.006';
+var VERSION = '2.007';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1344,7 +1344,6 @@ function renderScore() {
     }
     h += '</div>';
     h += '<div class="vp-bar"><div style="width:' + pct + '%;background:' + p.color + '"></div></div>';
-    h += '<button class="btn btn-sm mt-8" onclick="showFaction(\'' + fSafe + '\')" style="width:100%">📜 Faction Sheet</button>';
     h += '</div>';
   });
 
@@ -1393,8 +1392,8 @@ function renderSetup() {
       '</div>' +
       '<div style="margin-top:8px">' +
       (state.started 
-        ? '<div style="font-size:11px;color:var(--text-dim)">Faction (locked)</div><div class="gold" style="padding:8px 0">' + p.faction + '</div>'
-        : '<select onchange="updatePlayer(' + i + ',\'faction\',this.value)">' + opts + '</select>'
+        ? '<div style="font-size:11px;color:var(--text-dim)">Faction (locked)</div><div class="row"><div class="gold" style="padding:8px 0;flex:1">' + p.faction + '</div><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Faction Sheet</button></div>'
+        : '<div class="row"><select onchange="updatePlayer(' + i + ',\'faction\',this.value)" style="flex:1">' + opts + '</select><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Sheet</button></div>'
       ) +
       '</div>' +
       '</div>';
