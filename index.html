@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.019 -->
+<!-- TI4 Tracker 2.020 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -170,6 +170,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
       <button id="btn-add-player" class="btn">+ Add Player</button>
       <button id="btn-start" class="btn btn-primary">⚔ Start Game</button>
     </div>
+    <button id="btn-auto-color" class="btn btn-sm mt-8" style="border-color:var(--red);color:var(--red)">TEMP AUTO COLOR</button>
   </div>
 </div>
 
@@ -209,7 +210,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.019';
+var VERSION = '2.020';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1359,11 +1360,11 @@ function renderObjectiveRow(objs, stage) {
       var accent = stage === 1 ? '#d97706' : '#3a8bce';
       var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
       var stageKey = 'stage' + stage;
-      // Score bricks on the right edge
-      var bricks = '';
+      // Score circles stacked on right edge of card
+      var circles = '';
       (o.scoredBy || []).forEach(function(playerIdx) {
         var p = state.players[playerIdx];
-        if (p) bricks += '<div style="width:8px;height:8px;background:' + p.color + ';border:1px solid rgba(255,255,255,.3);margin:1px 0;border-radius:1px"></div>';
+        if (p) circles += '<div style="width:16px;height:16px;background:' + p.color + ';border:1px solid rgba(255,255,255,.5);margin:1px 0;border-radius:50%"></div>';
       });
       h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.3) inset;cursor:pointer;position:relative">';
       // Title
@@ -1373,9 +1374,9 @@ function renderObjectiveRow(objs, stage) {
       // VP circle at bottom
       h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:14px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 2px">' + stage + '</div>';
       h += '<div style="color:' + accent + ';font-size:7px;letter-spacing:.1em;font-weight:700">' + vpText + '</div>';
-      // Color bricks stacked on right edge
-      if (bricks) {
-        h += '<div style="position:absolute;right:-2px;top:6px;display:flex;flex-direction:column">' + bricks + '</div>';
+      // Color circles stacked on right edge
+      if (circles) {
+        h += '<div style="position:absolute;right:-8px;top:4px;display:flex;flex-direction:column">' + circles + '</div>';
       }
       h += '</div>';
     } else {
@@ -2060,6 +2061,29 @@ function endGame(winnerName) {
   if (isAdmin) pushState();
 }
 
+function tempAutoColor() {
+  if (!isAdmin || state.started) return;
+  // Get all available colors, shuffle them, assign to players without color
+  var used = state.players.map(function(p) { return p.color; }).filter(Boolean);
+  var available = TI4_COLORS.filter(function(c) { return used.indexOf(c.hex) < 0; });
+  // Shuffle
+  for (var i = available.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = available[i]; available[i] = available[j]; available[j] = tmp;
+  }
+  // Assign to any player without a color
+  var idx = 0;
+  state.players.forEach(function(p) {
+    if (!p.color && idx < available.length) {
+      p.color = available[idx].hex;
+      idx++;
+    }
+  });
+  renderSetup();
+  if (isAdmin) pushState();
+}
+window.tempAutoColor = tempAutoColor;
+
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
   state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null };
@@ -2217,6 +2241,7 @@ document.getElementById('btn-settings').addEventListener('click', function() {
   document.getElementById('setup-form').style.display = '';
 });
 document.getElementById('btn-add-player').addEventListener('click', addPlayer);
+document.getElementById('btn-auto-color').addEventListener('click', tempAutoColor);
 document.getElementById('btn-start').addEventListener('click', startGame);
 document.getElementById('vp-goal').addEventListener('change', function() {
   state.vpGoal = parseInt(this.value, 10);
