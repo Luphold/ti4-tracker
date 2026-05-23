@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.052 -->
+<!-- TI4 Tracker 2.053 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -155,6 +155,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
       <button id="btn-resume-admin" class="btn btn-primary btn-full mt-16" style="display:none;background:rgba(93,184,255,0.15);border-color:#5db8ff;color:#5db8ff">↺ Resume Previous Game</button>
       <button id="btn-admin" class="btn btn-primary btn-full mt-8">Enter as Admin</button>
       <button id="btn-guest" class="btn btn-full mt-8">Enter as Guest</button>
+      <button id="btn-howto" class="btn btn-full mt-8" style="border-color:var(--border2);color:var(--text-dim)">📖 How To</button>
       <button id="btn-settings" class="btn btn-sm dim mt-16" style="border:none;background:none">⚙ Change settings</button>
     </div>
   </div>
@@ -256,7 +257,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.052';
+var VERSION = '2.053';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -3243,6 +3244,7 @@ document.getElementById('btn-reset').addEventListener('click', clearCache);
 document.getElementById('btn-admin').addEventListener('click', enterAsAdmin);
 document.getElementById('btn-resume-admin').addEventListener('click', resumeAsAdmin);
 document.getElementById('btn-guest').addEventListener('click', enterAsGuest);
+document.getElementById('btn-howto').addEventListener('click', showHowTo);
 document.getElementById('btn-join').addEventListener('click', joinGame);
 document.getElementById('btn-join-back').addEventListener('click', function() { showScreen('screen-welcome'); });
 document.getElementById('btn-settings').addEventListener('click', function() {
@@ -3272,6 +3274,100 @@ if ('serviceWorker' in navigator) {
 // =============================================================================
 // Init
 // =============================================================================
+function showHowTo() {
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">📖 How To Use</div></div>';
+  h += '<div style="font-size:12px;line-height:1.5;max-height:65vh;overflow-y:auto;padding-right:4px">';
+  
+  // Starting a game
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:6px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">Starting a Game (Admin)</div>';
+  h += '<ol style="padding-left:18px;margin:0">';
+  h += '<li>Tap <b>Enter as Admin</b></li>';
+  h += '<li>Share the room code that appears at the top with your players</li>';
+  h += '<li>In the <b>Setup</b> tab: tap <b>+ Add Player</b> for each player (2–8 supported)</li>';
+  h += '<li>Edit names, pick faction, tap the color circle to pick a color</li>';
+  h += '<li>All players must have a color before you can start</li>';
+  h += '<li>View any faction sheet by tapping <b>📜 Sheet</b> next to the faction selector</li>';
+  h += '<li>When ready, tap <b>⚔ Start Game</b></li>';
+  h += '</ol>';
+  
+  // Joining as guest
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">Joining (Guest)</div>';
+  h += '<ol style="padding-left:18px;margin:0">';
+  h += '<li>Tap <b>Enter as Guest</b></li>';
+  h += '<li>Enter the room code the admin shared</li>';
+  h += '<li>Tap <b>Join Room</b> — you\'ll see the score board update live</li>';
+  h += '</ol>';
+  h += '<p style="margin-top:6px" class="dim">Guests can view all screens but can\'t make changes.</p>';
+  
+  // Scoring
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">Scoring (Admin)</div>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li><b>Public objectives</b> are at the top. Round 1 reveals two cards. Every Next Round reveals one more, alternating Stage 1 first then Stage 2.</li>';
+  h += '<li>Tap any face-up objective to open it enlarged:<ul style="padding-left:18px;margin-top:4px">';
+  h += '<li><b>Score</b> → pick a player who completed it</li>';
+  h += '<li><b>♻</b> recycle → replace with new random card from same stage (refunds any VP). Useful for custom games.</li>';
+  h += '<li><b>✕</b> next to scored player → undo a miss-click</li>';
+  h += '</ul></li>';
+  h += '<li><b>Secret Objectives</b>: tap <b>+ Score Secret</b> → choose objective (grouped by Status/Action/Agenda) → choose player. Each player may only score 3.</li>';
+  h += '<li><b>Other Objectives</b>: Custodians, Support for the Throne, Mutiny, Shard of the Throne, etc. Also has free-text "Other" for anything custom.</li>';
+  h += '</ul>';
+  
+  // Round flow
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">Round Flow</div>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Tap <b>Next Round ▶</b> to advance — you\'ll be asked if you want to take a board photo (optional)</li>';
+  h += '<li>Tap <b>⏸</b> (top right) to pause — locks input, stops the round timer</li>';
+  h += '<li>Tap <b>⏹ End Game</b> when the game is over</li>';
+  h += '</ul>';
+  
+  // After the game
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">After the Game</div>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Setup, Tech, and Scoring tabs lock automatically</li>';
+  h += '<li><b>History</b> preserves every event of every round</li>';
+  h += '<li>Tap <b>📤</b> on a history entry to export it as a PNG image you can share</li>';
+  h += '</ul>';
+  
+  // Keep in mind
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--red);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">⚠ Things to Keep in Mind</div>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Games of <b>2 rounds or less are not saved</b> to history (assumed test/debug)</li>';
+  h += '<li>The admin must keep the app open for sync to work. If admin closes the app, use the <b>↺ Resume Previous Game</b> button to pick back up.</li>';
+  h += '<li>Round photos stay <b>local on the admin device</b> until end-of-game. Clearing storage before End Game loses them.</li>';
+  h += '<li>Sync polls every <b>3 seconds</b> — small delay between admin actions and what guests see</li>';
+  h += '<li>Free Supabase tier is plenty — a typical game stores well under 100 KB</li>';
+  h += '</ul>';
+  
+  // Troubleshooting
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">🛠 Troubleshooting</div>';
+  h += '<p style="margin:6px 0"><b>"Failed to connect" on Save & Connect:</b></p>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Double-check URL is in the URL field (not the key)</li>';
+  h += '<li>URL should look like <code style="color:var(--gold)">https://abcdefghij.supabase.co</code></li>';
+  h += '<li>Anon key should start with <code style="color:var(--gold)">eyJ…</code> and be very long</li>';
+  h += '</ul>';
+  h += '<p style="margin:6px 0"><b>Guest can\'t see admin\'s game:</b></p>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Both must use the same Supabase URL and anon key</li>';
+  h += '<li>Room code must match (uppercase, 6 characters)</li>';
+  h += '<li>Tap the <b>🐞</b> button (bottom right) to see the connection log</li>';
+  h += '</ul>';
+  h += '<p style="margin:6px 0"><b>Buttons not responding / weird behavior after update:</b></p>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>On the Supabase setup screen, tap <b>↺ Clear Cache & Reload</b> to force a fresh load</li>';
+  h += '</ul>';
+  
+  h += '</div>'; // close scroll wrapper
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+window.showHowTo = showHowTo;
+
 function init() {
   log('Init starting');
   Promise.all([dbGet('settings', 'url'), dbGet('settings', 'key')]).then(function(results) {
