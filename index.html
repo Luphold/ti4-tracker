@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.040 -->
+<!-- TI4 Tracker 2.041 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -182,6 +182,9 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   </div>
 </div>
 
+<!-- Hidden camera input for round photos -->
+<input id="round-photo-input" type="file" accept="image/*" capture="environment" style="display:none">
+
 <!-- Pause overlay -->
 <div id="pause-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:20px;backdrop-filter:blur(8px)">
   <div style="font-size:48px;color:var(--gold);letter-spacing:.2em;text-shadow:0 0 16px rgba(201,168,76,0.6)">⏸ PAUSED</div>
@@ -252,7 +255,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.040';
+var VERSION = '2.041';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1901,6 +1904,14 @@ function renderHistory() {
           }
           h += '</div>';
           h += '</div>'; // end two-col
+          
+          // Round photo if available
+          if (e.roundPhotos && e.roundPhotos[r]) {
+            h += '<div style="margin-top:8px;text-align:center">';
+            h += '<img src="' + e.roundPhotos[r] + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--border);cursor:pointer" onclick="viewPhoto(\'' + e.id + '\',' + r + ')">';
+            h += '</div>';
+          }
+          
           h += '</div>'; // end round block
         }
         
@@ -2581,6 +2592,8 @@ function startGame() {
   state.pauseStarted = null;
   state.pausedDurationMs = 0;
   state.roundLog = [];
+  // Clear any leftover photo cache from previous game
+  clearPhotoCache();
   // Assign starting techs
   state.players.forEach(function(p) {
     p.techs = (STARTING_TECH[p.faction] || []).filter(function(t) {
@@ -2611,14 +2624,156 @@ function vp(i, delta) {
   if (state.players[i].vp >= state.vpGoal) endGame(state.players[i].name);
 }
 
+function viewPhoto(historyId, roundNum) {
+  dbGet('history', historyId).then(function(entry) {
+    if (!entry || !entry.roundPhotos || !entry.roundPhotos[roundNum]) return;
+    var url = entry.roundPhotos[roundNum];
+    var h = '<div style="text-align:center">';
+    h += '<div class="gold" style="font-size:14px;margin-bottom:8px">Round ' + roundNum + '</div>';
+    h += '<img src="' + url + '" style="max-width:100%;max-height:70vh;border-radius:6px">';
+    h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+    h += '</div>';
+    var modal = document.getElementById('modal');
+    modal.classList.add('modal-center');
+    modal.innerHTML = h;
+    modal.classList.add('open');
+    document.getElementById('modal-overlay').classList.add('open');
+  });
+}
+window.viewPhoto = viewPhoto;
+
 function nextRound() {
   if (!isAdmin || state.ended || state.paused) return;
+  // Show photo prompt modal first
+  promptRoundPhoto();
+}
+
+function promptRoundPhoto() {
+  var currentRound = state.round;
+  var h = '<div style="text-align:center;padding:8px 0">';
+  h += '<div class="gold" style="font-size:16px;margin-bottom:8px">End Round ' + currentRound + '</div>';
+  h += '<div class="small dim" style="margin-bottom:16px">Take a photo of the board to save with this round? (optional)</div>';
+  h += '<div style="display:flex;flex-direction:column;gap:8px">';
+  h += '<button class="btn btn-primary" onclick="captureRoundPhoto()">📷 Take Photo & Advance</button>';
+  h += '<button class="btn" onclick="advanceRoundWithoutPhoto()">Skip Photo & Advance</button>';
+  h += '<button class="btn btn-sm" onclick="closeModal()" style="border:none;background:none;color:var(--text-dim)">Cancel</button>';
+  h += '</div></div>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function advanceRoundWithoutPhoto() {
+  closeModal();
+  doAdvanceRound();
+}
+
+function captureRoundPhoto() {
+  var input = document.getElementById('round-photo-input');
+  input.value = '';
+  input.onchange = function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) {
+      closeModal();
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var maxW = 800;
+        var ratio = Math.min(1, maxW / img.width);
+        var w = Math.floor(img.width * ratio);
+        var h2 = Math.floor(img.height * ratio);
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h2;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h2);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        // Store in IndexedDB photoCache, NOT in state (too big for Supabase sync)
+        savePhotoCache(state.round, dataUrl).then(function() {
+          closeModal();
+          doAdvanceRound();
+        });
+      };
+      img.onerror = function() {
+        alert('Could not load photo.');
+        closeModal();
+      };
+      img.src = ev.target.result;
+    };
+    reader.onerror = function() {
+      alert('Could not read file.');
+      closeModal();
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// Photos stored in IndexedDB during game; bundled into history on endGame
+function savePhotoCache(roundNum, dataUrl) {
+  return openDB().then(function(d) {
+    return new Promise(function(resolve) {
+      // Use settings store with a "photo:N" key
+      if (!d.objectStoreNames.contains('settings')) { resolve(false); return; }
+      var r = d.transaction('settings', 'readwrite').objectStore('settings').put({ k: 'photo:' + roundNum, v: dataUrl });
+      r.onsuccess = function() { resolve(true); };
+      r.onerror = function() { resolve(false); };
+    });
+  });
+}
+
+function loadAllPhotoCache() {
+  return openDB().then(function(d) {
+    return new Promise(function(resolve) {
+      var photos = {};
+      var r = d.transaction('settings').objectStore('settings').openCursor();
+      r.onsuccess = function(ev) {
+        var cur = ev.target.result;
+        if (cur) {
+          if (typeof cur.key === 'string' && cur.key.indexOf('photo:') === 0) {
+            var roundNum = parseInt(cur.key.slice(6), 10);
+            if (!isNaN(roundNum)) photos[roundNum] = cur.value.v;
+          }
+          cur.continue();
+        } else {
+          resolve(photos);
+        }
+      };
+      r.onerror = function() { resolve({}); };
+    });
+  });
+}
+
+function clearPhotoCache() {
+  return openDB().then(function(d) {
+    return new Promise(function(resolve) {
+      var store = d.transaction('settings', 'readwrite').objectStore('settings');
+      var r = store.openCursor();
+      r.onsuccess = function(ev) {
+        var cur = ev.target.result;
+        if (cur) {
+          if (typeof cur.key === 'string' && cur.key.indexOf('photo:') === 0) {
+            cur.delete();
+          }
+          cur.continue();
+        } else { resolve(true); }
+      };
+      r.onerror = function() { resolve(false); };
+    });
+  });
+}
+
+function doAdvanceRound() {
   state.round++;
-  // Record timestamp for this round start
   if (!state.roundTimestamps) state.roundTimestamps = [];
   state.roundTimestamps.push(new Date().toISOString());
   state.pausedDurationMs = 0;
-  // Reveal the next objective card
   if (state.objectives) {
     var nextS1 = state.objectives.stage1.find(function(o) { return !o.revealed; });
     if (nextS1) {
@@ -2632,6 +2787,10 @@ function nextRound() {
   pushState();
 }
 
+window.promptRoundPhoto = promptRoundPhoto;
+window.captureRoundPhoto = captureRoundPhoto;
+window.advanceRoundWithoutPhoto = advanceRoundWithoutPhoto;
+
 function endGame(winnerName) {
   if (!isAdmin || state.paused) return;
   if (!winnerName && !confirm('End game and save results?')) return;
@@ -2644,17 +2803,25 @@ function endGame(winnerName) {
   state.endTime = new Date().toISOString();
   // Save to history (only if game lasted more than 2 rounds)
   if (state.round > 2) {
-    dbSet('history', {
-      playedAt: new Date().toISOString(),
-      startTime: state.startTime,
-      endTime: state.endTime,
-      roundTimestamps: state.roundTimestamps || [],
-      roundLog: state.roundLog || [],
-      players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
-      winner: winnerName,
-      rounds: state.round,
-      vpGoal: state.vpGoal
+    // Load photos from cache and bundle into history
+    loadAllPhotoCache().then(function(photos) {
+      dbSet('history', {
+        playedAt: new Date().toISOString(),
+        startTime: state.startTime,
+        endTime: state.endTime,
+        roundTimestamps: state.roundTimestamps || [],
+        roundLog: state.roundLog || [],
+        roundPhotos: photos,
+        players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
+        winner: winnerName,
+        rounds: state.round,
+        vpGoal: state.vpGoal
+      }).then(function() {
+        clearPhotoCache();
+      });
     });
+  } else {
+    clearPhotoCache();
   }
   renderAll();
   if (isAdmin) pushState();
@@ -2767,6 +2934,7 @@ window.tempAutoColor = tempAutoColor;
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
   state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [] };
+  clearPhotoCache();
   setNav('setup');
   if (isAdmin) pushState();
 }
