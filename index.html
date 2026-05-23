@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.028 -->
+<!-- TI4 Tracker 2.029 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.028';
+var VERSION = '2.029';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -2029,9 +2029,15 @@ function chooseSecretPlayer(secretName, secretType) {
   h += '<div style="display:flex;flex-direction:column;gap:6px">';
   state.players.forEach(function(p, i) {
     var safeName = secretName.replace(/'/g, "\\'");
-    h += '<button class="btn" onclick="confirmSecretScore(\'' + safeName + '\',\'' + secretType + '\',' + i + ')" style="border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;font-weight:600">';
+    // Count how many secrets this player has already scored
+    var scoredCount = (state.secretsScored || []).filter(function(s) { return s.playerIdx === i; }).length;
+    var atMax = scoredCount >= 3;
+    var disabled = atMax ? 'disabled' : '';
+    var opacity = atMax ? '0.4' : '1';
+    h += '<button class="btn" ' + disabled + ' onclick="confirmSecretScore(\'' + safeName + '\',\'' + secretType + '\',' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;font-weight:600">';
     h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.6);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
-    h += p.name;
+    h += p.name + ' <span class="small dim" style="text-shadow:none;font-weight:400">(' + scoredCount + '/3)</span>';
+    if (atMax) h += ' <span class="small dim" style="text-shadow:none;font-weight:400">— at limit</span>';
     h += '</button>';
   });
   h += '</div>';
@@ -2042,10 +2048,16 @@ function chooseSecretPlayer(secretName, secretType) {
 
 function confirmSecretScore(secretName, secretType, playerIdx) {
   if (!isAdmin) return;
-  // Block double-score
+  // Block double-score (same secret)
   var already = (state.secretsScored || []).find(function(s) { return s.name === secretName; });
   if (already) {
     alert('This secret has already been scored.');
+    return;
+  }
+  // Block if player at 3-secret limit
+  var playerCount = (state.secretsScored || []).filter(function(s) { return s.playerIdx === playerIdx; }).length;
+  if (playerCount >= 3) {
+    alert(state.players[playerIdx].name + ' has already scored 3 secret objectives (maximum).');
     return;
   }
   if (!state.secretsScored) state.secretsScored = [];
