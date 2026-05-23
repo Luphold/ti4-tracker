@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.033 -->
+<!-- TI4 Tracker 2.035 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.033';
+var VERSION = '2.035';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -2012,19 +2012,19 @@ function recycleObjective() {
 }
 
 // Common "Other" objective sources (1 VP unless noted)
+// once: can only be scored once total
+// exclusive: belongs to only one player at a time (re-scoring removes from previous)
 var OTHER_OBJECTIVES = [
-  { name: "Custodians (Mecatol Rex)", vp: 1 },
+  { name: "Custodians (Mecatol Rex)", vp: 1, once: true },
   { name: "Imperial (Mecatol Rex)",   vp: 1 },
   { name: "Support for the Throne",   vp: 1 },
   { name: "Mutiny (For)",              vp: 1 },
   { name: "Mutiny (Against)",          vp: -1 },
   { name: "Seed of an Empire (Most)",  vp: 1 },
   { name: "Seed of an Empire (Fewest)", vp: 1 },
-  { name: "Shard of the Throne",       vp: 1 },
+  { name: "Shard of the Throne",       vp: 1, exclusive: true },
   { name: "Crown of Emphidia",         vp: 1 },
-  { name: "Holy Planet of Ixth",       vp: 1 },
-  { name: "Tomb + Crown of Thalnos",   vp: 1 },
-  { name: "Political Censure",         vp: 1 }
+  { name: "Political Censure",         vp: 1, exclusive: true }
 ];
 
 function openOtherPicker() {
@@ -2032,14 +2032,33 @@ function openOtherPicker() {
   var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Choose Other Objective</div></div>';
   h += '<div style="display:flex;flex-direction:column;gap:4px">';
   OTHER_OBJECTIVES.forEach(function(o) {
+    // Hide "once" items that have already been scored
+    if (o.once) {
+      var alreadyOnce = (state.otherScored || []).find(function(s) { return s.name === o.name; });
+      if (alreadyOnce) return;
+    }
     var safeName = o.name.replace(/'/g, "\\'");
     var vpLabel = (o.vp > 0 ? '+' : '') + o.vp + ' VP';
     var vpColor = o.vp < 0 ? 'var(--red)' : 'var(--gold)';
+    // For exclusive items, show who currently holds it
+    var holder = '';
+    if (o.exclusive) {
+      var current = (state.otherScored || []).find(function(s) { return s.name === o.name; });
+      if (current) {
+        var holderP = state.players[current.playerIdx];
+        if (holderP) holder = '<span class="small dim" style="font-size:9px"> · held by ' + holderP.name + '</span>';
+      }
+    }
     h += '<div onclick="chooseOtherPlayer(\'' + safeName + '\',' + o.vp + ')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:rgba(36, 50, 84, 0.3);font-size:13px;display:flex;justify-content:space-between;align-items:center">';
-    h += '<span>' + o.name + '</span>';
+    h += '<span>' + o.name + holder + '</span>';
     h += '<span style="color:' + vpColor + ';font-size:11px;font-weight:700">' + vpLabel + '</span>';
     h += '</div>';
   });
+  // Free-text "Other" at the bottom
+  h += '<div onclick="promptCustomOther()" style="padding:8px 10px;border:1px dashed var(--border2);border-radius:6px;cursor:pointer;background:rgba(36, 50, 84, 0.2);font-size:13px;display:flex;justify-content:space-between;align-items:center;margin-top:6px">';
+  h += '<span class="dim">Other (type a name)…</span>';
+  h += '<span style="color:var(--gold);font-size:11px;font-weight:700">+1 VP</span>';
+  h += '</div>';
   h += '</div>';
   h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
   
@@ -2049,6 +2068,16 @@ function openOtherPicker() {
   modal.classList.add('open');
   document.getElementById('modal-overlay').classList.add('open');
 }
+
+function promptCustomOther() {
+  if (!isAdmin) return;
+  var name = prompt('Enter a name for this objective:');
+  if (!name) return;
+  name = name.trim();
+  if (!name) return;
+  chooseOtherPlayer(name, 1);
+}
+window.promptCustomOther = promptCustomOther;
 
 function chooseOtherPlayer(name, vp) {
   if (!isAdmin) return;
@@ -2071,6 +2100,38 @@ function chooseOtherPlayer(name, vp) {
 function confirmOtherScore(name, vp, playerIdx) {
   if (!isAdmin) return;
   if (!state.otherScored) state.otherScored = [];
+  
+  // Look up rules for this objective
+  var rule = OTHER_OBJECTIVES.find(function(o) { return o.name === name; }) || {};
+  
+  // If it's a "once" item that already exists, block
+  if (rule.once) {
+    var alreadyOnce = state.otherScored.find(function(s) { return s.name === name; });
+    if (alreadyOnce) {
+      alert(name + ' can only be scored once.');
+      return;
+    }
+  }
+  
+  // If exclusive, remove from previous holder first (refund VP)
+  if (rule.exclusive) {
+    for (var i = state.otherScored.length - 1; i >= 0; i--) {
+      if (state.otherScored[i].name === name) {
+        var prev = state.otherScored[i];
+        // If same player tries to re-score what they already hold, just no-op
+        if (prev.playerIdx === playerIdx) {
+          alert(state.players[playerIdx].name + ' already holds ' + name + '.');
+          return;
+        }
+        // Refund VP to old holder
+        if (state.players[prev.playerIdx]) {
+          state.players[prev.playerIdx].vp = Math.max(0, (state.players[prev.playerIdx].vp || 0) - prev.vp);
+        }
+        state.otherScored.splice(i, 1);
+      }
+    }
+  }
+  
   state.otherScored.push({ name: name, vp: vp, playerIdx: playerIdx });
   state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) + vp);
   closeModal();
