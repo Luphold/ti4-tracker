@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.045 -->
+<!-- TI4 Tracker 2.052 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -256,7 +256,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.045';
+var VERSION = '2.052';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1430,7 +1430,7 @@ function renderScore() {
   if (state.ended) {
     h += '<div class="panel center" style="border-color:var(--gold);padding:24px">';
     h += '<div class="gold" style="font-size:24px;letter-spacing:.05em">🏆 The End</div>';
-    h += '<div class="dim small mt-8" style="line-height:1.5">Thanks for participation<br>and hope to see you again soon</div>';
+    h += '<div class="dim small mt-8" style="line-height:1.5">Thanks for participating<br>and hope to see you again soon</div>';
     if (state.winner) h += '<div class="mt-16">Winner: <b style="color:var(--gold)">' + state.winner + '</b></div>';
     h += '<div class="small dim mt-8">' + state.round + ' rounds played</div>';
     if (isAdmin) h += '<button class="btn btn-primary mt-16" onclick="newGame()">New Game</button>';
