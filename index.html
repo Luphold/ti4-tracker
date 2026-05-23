@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.031 -->
+<!-- TI4 Tracker 2.033 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -224,8 +224,8 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 
 <!-- Bottom nav -->
 <div id="nav" class="nav">
-  <button class="nav-btn" data-nav="score"><span class="nav-icon">🏆</span>Score</button>
   <button class="nav-btn" data-nav="setup"><span class="nav-icon">⚙</span>Setup</button>
+  <button class="nav-btn" data-nav="score"><span class="nav-icon">🏆</span>Score</button>
   <button class="nav-btn" data-nav="tech"><span class="nav-icon">🔬</span>Tech</button>
   <button class="nav-btn" data-nav="history"><span class="nav-icon">📋</span>History</button>
 </div>
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.031';
+var VERSION = '2.033';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1168,7 +1168,9 @@ var state = {
     stage2: []   // 5 picks from STAGE2_OBJECTIVES
   },
   // Secret objectives scored: [{name, type, playerIdx}]
-  secretsScored: []
+  secretsScored: [],
+  // Other objectives scored: [{name, playerIdx}]
+  otherScored: []
 };
 
 var isAdmin = false;
@@ -1346,7 +1348,7 @@ function renderScore() {
   if (isAdmin && !state.ended) {
     h += '<div class="panel"><div class="row">';
     h += '<button class="btn btn-primary" onclick="nextRound()">Next Round ▶</button>';
-    h += '<button class="btn btn-danger btn-sm" onclick="endGame()">⏹ End Game</button>';
+    h += '<button class="btn btn-danger" onclick="endGame()">⏹ End Game</button>';
     h += '</div></div>';
   }
 
@@ -1409,6 +1411,37 @@ function renderScore() {
       h += '</div>';
       if (isAdmin) {
         h += '<button onclick="removeSecret(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
+  
+  // Other Objectives panel
+  h += '<div class="panel">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Other Objectives</div>';
+  if (isAdmin) {
+    h += '<button class="btn btn-sm btn-primary" onclick="openOtherPicker()">+ Score Other</button>';
+  }
+  h += '</div>';
+  
+  if (!state.otherScored || !state.otherScored.length) {
+    h += '<div class="small dim center" style="padding:8px">No other objectives scored yet</div>';
+  } else {
+    h += '<div style="display:flex;flex-direction:column;gap:4px">';
+    state.otherScored.forEach(function(s, idx) {
+      var p = state.players[s.playerIdx];
+      if (!p) return;
+      h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-radius:6px;padding:6px 10px">';
+      h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.25);border-radius:50%;flex-shrink:0"></div>';
+      h += '<div style="flex:1;min-width:0">';
+      h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
+      h += '<div style="font-size:9px;color:var(--text-dim);letter-spacing:.08em">' + p.name + ' · +' + (s.vp || 1) + ' VP</div>';
+      h += '</div>';
+      if (isAdmin) {
+        h += '<button onclick="removeOther(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
       }
       h += '</div>';
     });
@@ -1978,6 +2011,98 @@ function recycleObjective() {
   renderScore();
 }
 
+// Common "Other" objective sources (1 VP unless noted)
+var OTHER_OBJECTIVES = [
+  { name: "Custodians (Mecatol Rex)", vp: 1 },
+  { name: "Imperial (Mecatol Rex)",   vp: 1 },
+  { name: "Support for the Throne",   vp: 1 },
+  { name: "Mutiny (For)",              vp: 1 },
+  { name: "Mutiny (Against)",          vp: -1 },
+  { name: "Seed of an Empire (Most)",  vp: 1 },
+  { name: "Seed of an Empire (Fewest)", vp: 1 },
+  { name: "Shard of the Throne",       vp: 1 },
+  { name: "Crown of Emphidia",         vp: 1 },
+  { name: "Holy Planet of Ixth",       vp: 1 },
+  { name: "Tomb + Crown of Thalnos",   vp: 1 },
+  { name: "Political Censure",         vp: 1 }
+];
+
+function openOtherPicker() {
+  if (!isAdmin) return;
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Choose Other Objective</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:4px">';
+  OTHER_OBJECTIVES.forEach(function(o) {
+    var safeName = o.name.replace(/'/g, "\\'");
+    var vpLabel = (o.vp > 0 ? '+' : '') + o.vp + ' VP';
+    var vpColor = o.vp < 0 ? 'var(--red)' : 'var(--gold)';
+    h += '<div onclick="chooseOtherPlayer(\'' + safeName + '\',' + o.vp + ')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:rgba(36, 50, 84, 0.3);font-size:13px;display:flex;justify-content:space-between;align-items:center">';
+    h += '<span>' + o.name + '</span>';
+    h += '<span style="color:' + vpColor + ';font-size:11px;font-weight:700">' + vpLabel + '</span>';
+    h += '</div>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function chooseOtherPlayer(name, vp) {
+  if (!isAdmin) return;
+  var vpLabel = (vp > 0 ? '+' : '') + vp + ' VP';
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Score</div><div class="small dim mt-8">' + name + ' (' + vpLabel + ')</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  state.players.forEach(function(p, i) {
+    var safeName = name.replace(/'/g, "\\'");
+    h += '<button class="btn" onclick="confirmOtherScore(\'' + safeName + '\',' + vp + ',' + i + ')" style="border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += p.name;
+    h += '</button>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="openOtherPicker()">Back</button>';
+  
+  document.getElementById('modal').innerHTML = h;
+}
+
+function confirmOtherScore(name, vp, playerIdx) {
+  if (!isAdmin) return;
+  if (!state.otherScored) state.otherScored = [];
+  state.otherScored.push({ name: name, vp: vp, playerIdx: playerIdx });
+  state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) + vp);
+  closeModal();
+  pushState();
+  renderScore();
+  if (state.players[playerIdx].vp >= state.vpGoal) {
+    setTimeout(function() {
+      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
+        endGame(state.players[playerIdx].name);
+      }
+    }, 100);
+  }
+}
+
+function removeOther(idx) {
+  if (!isAdmin) return;
+  if (!state.otherScored || !state.otherScored[idx]) return;
+  if (!confirm('Remove this scoring?')) return;
+  var entry = state.otherScored[idx];
+  if (state.players[entry.playerIdx]) {
+    state.players[entry.playerIdx].vp = Math.max(0, (state.players[entry.playerIdx].vp || 0) - entry.vp);
+  }
+  state.otherScored.splice(idx, 1);
+  pushState();
+  renderScore();
+}
+
+window.openOtherPicker = openOtherPicker;
+window.chooseOtherPlayer = chooseOtherPlayer;
+window.confirmOtherScore = confirmOtherScore;
+window.removeOther = removeOther;
+
 function openSecretPicker() {
   if (!isAdmin) return;
   // Get list of secrets not yet scored
@@ -2215,6 +2340,7 @@ function startGame() {
   state.objectives.stage1.forEach(function(o) { state.objectives.used.push(o.name); });
   state.objectives.stage2.forEach(function(o) { state.objectives.used.push(o.name); });
   state.secretsScored = [];
+  state.otherScored = [];
   setNav('score');
   pushState();
 }
@@ -2254,14 +2380,16 @@ function endGame(winnerName) {
   state.ended = true;
   state.winner = winnerName;
   state.endTime = new Date().toISOString();
-  // Save to history
-  dbSet('history', {
-    playedAt: new Date().toISOString(),
-    players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
-    winner: winnerName,
-    rounds: state.round,
-    vpGoal: state.vpGoal
-  });
+  // Save to history (only if game lasted more than 2 rounds)
+  if (state.round > 2) {
+    dbSet('history', {
+      playedAt: new Date().toISOString(),
+      players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
+      winner: winnerName,
+      rounds: state.round,
+      vpGoal: state.vpGoal
+    });
+  }
   renderAll();
   if (isAdmin) pushState();
 }
@@ -2291,7 +2419,7 @@ window.tempAutoColor = tempAutoColor;
 
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [] };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [] };
   setNav('setup');
   if (isAdmin) pushState();
 }
