@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.036 -->
+<!-- TI4 Tracker 2.037 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -254,7 +254,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.036';
+var VERSION = '2.037';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1188,7 +1188,9 @@ var state = {
   // Pause state
   paused: false,
   pauseStarted: null,    // ISO timestamp when paused began
-  pausedDurationMs: 0    // accumulated paused milliseconds in current round
+  pausedDurationMs: 0,   // accumulated paused milliseconds in current round
+  // Per-round event log for history: [{round, type, playerIdx, name, vp, ...}]
+  roundLog: []
 };
 
 var isAdmin = false;
@@ -1786,6 +1788,9 @@ function renderHistory() {
     el.innerHTML = entries.reverse().map(function(e) {
       var date = new Date(e.playedAt).toLocaleDateString();
       var players = (e.players || []).map(function(p) { return p.name; }).join(', ');
+      // Build player lookup for color
+      var playerById = {};
+      (e.players || []).forEach(function(p, i) { playerById[i] = p; });
       
       var h = '<div class="panel" style="position:relative">';
       h += '<div class="small dim">' + date + ' · ' + (e.rounds || 1) + ' rounds · ' + (e.vpGoal || 10) + ' VP</div>';
@@ -1796,32 +1801,57 @@ function renderHistory() {
       if (e.startTime || e.endTime || (e.roundTimestamps && e.roundTimestamps.length)) {
         h += '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.1em">⏱ Timing</summary>';
         h += '<div style="margin-top:6px;font-size:11px;font-family:monospace;line-height:1.7">';
-        
         if (e.startTime) h += '<div><span class="dim">Started:</span> ' + formatClockTime(e.startTime) + '</div>';
-        
-        // Round-by-round elapsed times
         if (e.roundTimestamps && e.roundTimestamps.length > 1) {
           for (var i = 1; i < e.roundTimestamps.length; i++) {
             var prev = new Date(e.roundTimestamps[i-1]).getTime();
             var cur = new Date(e.roundTimestamps[i]).getTime();
             h += '<div class="dim">Round ' + i + ': ' + formatDuration(cur - prev) + '</div>';
           }
-          // Last round duration (from last timestamp to endTime)
           if (e.endTime) {
             var lastStart = new Date(e.roundTimestamps[e.roundTimestamps.length - 1]).getTime();
             var endMs = new Date(e.endTime).getTime();
             h += '<div class="dim">Round ' + e.roundTimestamps.length + ': ' + formatDuration(endMs - lastStart) + '</div>';
           }
         }
-        
         if (e.endTime) h += '<div><span class="dim">Ended:</span> ' + formatClockTime(e.endTime) + '</div>';
-        
-        // Total game duration
         if (e.startTime && e.endTime) {
           var total = new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
           h += '<div class="gold">Total: ' + formatDuration(total) + '</div>';
         }
-        
+        h += '</div></details>';
+      }
+      
+      // Per-round events log
+      if (e.roundLog && e.roundLog.length) {
+        h += '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.1em">📋 Round Events</summary>';
+        h += '<div style="margin-top:6px;font-size:11px;line-height:1.5">';
+        // Group by round
+        var byRound = {};
+        e.roundLog.forEach(function(evt) {
+          if (!byRound[evt.round]) byRound[evt.round] = [];
+          byRound[evt.round].push(evt);
+        });
+        var roundNums = Object.keys(byRound).sort(function(a,b) { return +a - +b; });
+        roundNums.forEach(function(r) {
+          h += '<div style="margin-top:8px;padding-top:4px;border-top:1px solid var(--border)">';
+          h += '<div style="color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Round ' + r + '</div>';
+          byRound[r].forEach(function(evt) {
+            var p = playerById[evt.playerIdx];
+            if (!p) return;
+            var label = '';
+            var icon = '';
+            if (evt.type === 'public')      { icon = '🎯'; label = evt.name + ' (+' + evt.vp + ' VP)'; }
+            else if (evt.type === 'secret') { icon = '🤫'; label = evt.name + ' (+1 VP)'; }
+            else if (evt.type === 'other')  { icon = '⭐'; label = evt.name + ' (' + (evt.vp >= 0 ? '+' : '') + evt.vp + ' VP)'; }
+            else if (evt.type === 'other-lost') { icon = '↩'; label = 'lost ' + evt.name + ' (' + evt.vp + ' VP)'; }
+            else if (evt.type === 'tech')   { icon = '🔬'; label = 'researched ' + evt.name; }
+            h += '<div style="padding:2px 0;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.25), 0.5px -0.5px 0 rgba(255,255,255,.25), -0.5px 0.5px 0 rgba(255,255,255,.25), 0.5px 0.5px 0 rgba(255,255,255,.25)">';
+            h += icon + ' <b>' + p.name + '</b> ' + label;
+            h += '</div>';
+          });
+          h += '</div>';
+        });
         h += '</div></details>';
       }
       
@@ -2034,6 +2064,7 @@ function scorePlayer(playerIdx) {
   // Add VP to player
   var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
   state.players[playerIdx].vp = (state.players[playerIdx].vp || 0) + vpVal;
+  logEvent('public', playerIdx, o.name, vpVal);
   pushState();
   // Refresh modal and underlying board
   openObjective(currentObjective.stageKey, currentObjective.idx);
@@ -2059,6 +2090,7 @@ function unscorePlayer(playerIdx) {
   // Remove VP from player
   var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
   state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) - vpVal);
+  unlogEvent('public', playerIdx, o.name);
   pushState();
   openObjective(currentObjective.stageKey, currentObjective.idx);
   renderScore();
@@ -2221,6 +2253,7 @@ function confirmOtherScore(name, vp, playerIdx) {
         if (state.players[prev.playerIdx]) {
           state.players[prev.playerIdx].vp = Math.max(0, (state.players[prev.playerIdx].vp || 0) - prev.vp);
         }
+        logEvent('other-lost', prev.playerIdx, name, -prev.vp);
         state.otherScored.splice(i, 1);
       }
     }
@@ -2228,6 +2261,7 @@ function confirmOtherScore(name, vp, playerIdx) {
   
   state.otherScored.push({ name: name, vp: vp, playerIdx: playerIdx });
   state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) + vp);
+  logEvent('other', playerIdx, name, vp);
   closeModal();
   pushState();
   renderScore();
@@ -2248,6 +2282,7 @@ function removeOther(idx) {
   if (state.players[entry.playerIdx]) {
     state.players[entry.playerIdx].vp = Math.max(0, (state.players[entry.playerIdx].vp || 0) - entry.vp);
   }
+  unlogEvent('other', entry.playerIdx, entry.name);
   state.otherScored.splice(idx, 1);
   pushState();
   renderScore();
@@ -2344,6 +2379,7 @@ function confirmSecretScore(secretName, secretType, playerIdx) {
   state.secretsScored.push({ name: secretName, type: secretType, playerIdx: playerIdx });
   // Add 1 VP
   state.players[playerIdx].vp = (state.players[playerIdx].vp || 0) + 1;
+  logEvent('secret', playerIdx, secretName, 1);
   closeModal();
   pushState();
   renderScore();
@@ -2365,6 +2401,7 @@ function removeSecret(idx) {
   if (state.players[entry.playerIdx]) {
     state.players[entry.playerIdx].vp = Math.max(0, (state.players[entry.playerIdx].vp || 0) - 1);
   }
+  unlogEvent('secret', entry.playerIdx, entry.name);
   state.secretsScored.splice(idx, 1);
   pushState();
   renderScore();
@@ -2482,6 +2519,7 @@ function startGame() {
   state.paused = false;
   state.pauseStarted = null;
   state.pausedDurationMs = 0;
+  state.roundLog = [];
   // Assign starting techs
   state.players.forEach(function(p) {
     p.techs = (STARTING_TECH[p.faction] || []).filter(function(t) {
@@ -2550,6 +2588,7 @@ function endGame(winnerName) {
       startTime: state.startTime,
       endTime: state.endTime,
       roundTimestamps: state.roundTimestamps || [],
+      roundLog: state.roundLog || [],
       players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
       winner: winnerName,
       rounds: state.round,
@@ -2558,6 +2597,30 @@ function endGame(winnerName) {
   }
   renderAll();
   if (isAdmin) pushState();
+}
+
+function logEvent(type, playerIdx, name, vp) {
+  if (!state.started || state.ended) return;
+  if (!state.roundLog) state.roundLog = [];
+  state.roundLog.push({
+    round: state.round,
+    type: type,
+    playerIdx: playerIdx,
+    name: name,
+    vp: vp || 0
+  });
+}
+
+function unlogEvent(type, playerIdx, name) {
+  // Remove the most recent matching event
+  if (!state.roundLog) return;
+  for (var i = state.roundLog.length - 1; i >= 0; i--) {
+    var e = state.roundLog[i];
+    if (e.type === type && e.playerIdx === playerIdx && e.name === name) {
+      state.roundLog.splice(i, 1);
+      return;
+    }
+  }
 }
 
 function pauseGame() {
@@ -2642,7 +2705,7 @@ window.tempAutoColor = tempAutoColor;
 
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0 };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [] };
   setNav('setup');
   if (isAdmin) pushState();
 }
@@ -2661,7 +2724,10 @@ function addTech(name) {
   if (!isAdmin) return;
   var p = state.players[techPlayer];
   if (!p.techs) p.techs = [];
-  if (p.techs.indexOf(name) < 0) p.techs.push(name);
+  if (p.techs.indexOf(name) < 0) {
+    p.techs.push(name);
+    logEvent('tech', techPlayer, name, 0);
+  }
   renderTech();
   if (isAdmin) pushState();
 }
@@ -2670,6 +2736,7 @@ function removeTech(name) {
   if (!isAdmin) return;
   var p = state.players[techPlayer];
   p.techs = (p.techs || []).filter(function(n) { return n !== name; });
+  unlogEvent('tech', techPlayer, name);
   renderTech();
   if (isAdmin) pushState();
 }
