@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.037 -->
+<!-- TI4 Tracker 2.040 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -85,14 +85,12 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .status-bar { display: none; background: rgba(26, 36, 64, 0.85); border-bottom: 1px solid var(--border); padding: 8px 12px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(6px); }
 .status-bar.visible { display: flex; }
 .round-display {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: .12em;
   color: #5db8ff;
   text-shadow: 0 0 12px rgba(93, 184, 255, 0.6), 0 0 4px rgba(93, 184, 255, 0.8);
+  white-space: nowrap;
 }
 .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; margin-right: 6px; }
 .conn-dot.on { background: var(--green); }
@@ -173,13 +171,13 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 </div>
 
 <!-- Status bar (shown in game) -->
-<div id="status-bar" class="status-bar" style="position:sticky;top:0;justify-content:space-between">
-  <div onclick="showRoomCode()" style="cursor:pointer;z-index:1"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
-  <div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center">
+<div id="status-bar" class="status-bar" style="position:sticky;top:0">
+  <div onclick="showRoomCode()" style="cursor:pointer;z-index:1;flex:1"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
+  <div style="display:flex;align-items:baseline;gap:8px">
     <div class="round-display" id="round-display">Round 1</div>
-    <div id="round-timer" style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:2px">0s</div>
+    <div id="round-timer" style="font-size:13px;color:var(--text-dim);font-family:monospace">0s</div>
   </div>
-  <div style="z-index:1">
+  <div style="z-index:1;flex:1;text-align:right">
     <button id="btn-pause" onclick="pauseGame()" style="background:none;border:1px solid var(--border2);color:var(--gold);font-size:14px;padding:4px 10px;border-radius:6px;cursor:pointer;display:none">⏸</button>
   </div>
 </div>
@@ -254,7 +252,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.037';
+var VERSION = '2.040';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1788,7 +1786,6 @@ function renderHistory() {
     el.innerHTML = entries.reverse().map(function(e) {
       var date = new Date(e.playedAt).toLocaleDateString();
       var players = (e.players || []).map(function(p) { return p.name; }).join(', ');
-      // Build player lookup for color
       var playerById = {};
       (e.players || []).forEach(function(p, i) { playerById[i] = p; });
       
@@ -1797,61 +1794,125 @@ function renderHistory() {
       if (e.winner) h += '<div class="gold">🏆 ' + e.winner + '</div>';
       h += '<div class="small dim">' + players + '</div>';
       
-      // Timestamps & durations
-      if (e.startTime || e.endTime || (e.roundTimestamps && e.roundTimestamps.length)) {
-        h += '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.1em">⏱ Timing</summary>';
-        h += '<div style="margin-top:6px;font-size:11px;font-family:monospace;line-height:1.7">';
-        if (e.startTime) h += '<div><span class="dim">Started:</span> ' + formatClockTime(e.startTime) + '</div>';
-        if (e.roundTimestamps && e.roundTimestamps.length > 1) {
-          for (var i = 1; i < e.roundTimestamps.length; i++) {
-            var prev = new Date(e.roundTimestamps[i-1]).getTime();
-            var cur = new Date(e.roundTimestamps[i]).getTime();
-            h += '<div class="dim">Round ' + i + ': ' + formatDuration(cur - prev) + '</div>';
-          }
-          if (e.endTime) {
-            var lastStart = new Date(e.roundTimestamps[e.roundTimestamps.length - 1]).getTime();
-            var endMs = new Date(e.endTime).getTime();
-            h += '<div class="dim">Round ' + e.roundTimestamps.length + ': ' + formatDuration(endMs - lastStart) + '</div>';
-          }
-        }
-        if (e.endTime) h += '<div><span class="dim">Ended:</span> ' + formatClockTime(e.endTime) + '</div>';
-        if (e.startTime && e.endTime) {
-          var total = new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
-          h += '<div class="gold">Total: ' + formatDuration(total) + '</div>';
-        }
-        h += '</div></details>';
-      }
+      var hasTiming = e.startTime || e.endTime || (e.roundTimestamps && e.roundTimestamps.length);
+      var hasEvents = e.roundLog && e.roundLog.length;
       
-      // Per-round events log
-      if (e.roundLog && e.roundLog.length) {
+      if (hasTiming || hasEvents) {
         h += '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.1em">📋 Round Events</summary>';
         h += '<div style="margin-top:6px;font-size:11px;line-height:1.5">';
-        // Group by round
+        
+        if (e.startTime) {
+          h += '<div class="dim" style="font-family:monospace;font-size:10px;margin-bottom:6px">Started ' + formatClockTime(e.startTime) + '</div>';
+        }
+        
         var byRound = {};
-        e.roundLog.forEach(function(evt) {
+        (e.roundLog || []).forEach(function(evt) {
           if (!byRound[evt.round]) byRound[evt.round] = [];
           byRound[evt.round].push(evt);
         });
-        var roundNums = Object.keys(byRound).sort(function(a,b) { return +a - +b; });
-        roundNums.forEach(function(r) {
-          h += '<div style="margin-top:8px;padding-top:4px;border-top:1px solid var(--border)">';
-          h += '<div style="color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Round ' + r + '</div>';
-          byRound[r].forEach(function(evt) {
-            var p = playerById[evt.playerIdx];
-            if (!p) return;
-            var label = '';
-            var icon = '';
-            if (evt.type === 'public')      { icon = '🎯'; label = evt.name + ' (+' + evt.vp + ' VP)'; }
-            else if (evt.type === 'secret') { icon = '🤫'; label = evt.name + ' (+1 VP)'; }
-            else if (evt.type === 'other')  { icon = '⭐'; label = evt.name + ' (' + (evt.vp >= 0 ? '+' : '') + evt.vp + ' VP)'; }
-            else if (evt.type === 'other-lost') { icon = '↩'; label = 'lost ' + evt.name + ' (' + evt.vp + ' VP)'; }
-            else if (evt.type === 'tech')   { icon = '🔬'; label = 'researched ' + evt.name; }
-            h += '<div style="padding:2px 0;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.25), 0.5px -0.5px 0 rgba(255,255,255,.25), -0.5px 0.5px 0 rgba(255,255,255,.25), 0.5px 0.5px 0 rgba(255,255,255,.25)">';
-            h += icon + ' <b>' + p.name + '</b> ' + label;
-            h += '</div>';
+        
+        var totalRounds = e.rounds || (e.roundTimestamps ? e.roundTimestamps.length : 0);
+        
+        // Track cumulative VP per player for each round end (for the score strip)
+        // Start each player at 0
+        var runningVp = (e.players || []).map(function() { return 0; });
+        
+        for (var r = 1; r <= totalRounds; r++) {
+          // Apply this round's VP changes to running totals
+          var evts = byRound[r] || [];
+          evts.forEach(function(evt) {
+            if (typeof evt.vp === 'number' && evt.playerIdx >= 0) {
+              runningVp[evt.playerIdx] = (runningVp[evt.playerIdx] || 0) + evt.vp;
+              if (runningVp[evt.playerIdx] < 0) runningVp[evt.playerIdx] = 0;
+            }
           });
+          
+          // Round duration
+          var durationLabel = '';
+          if (e.roundTimestamps && e.roundTimestamps[r-1]) {
+            var roundStart = new Date(e.roundTimestamps[r-1]).getTime();
+            var roundEnd;
+            if (e.roundTimestamps[r]) {
+              roundEnd = new Date(e.roundTimestamps[r]).getTime();
+            } else if (e.endTime) {
+              roundEnd = new Date(e.endTime).getTime();
+            }
+            if (roundEnd) {
+              durationLabel = ' <span class="dim" style="font-weight:400;letter-spacing:0;text-transform:none">· ' + formatDuration(roundEnd - roundStart) + '</span>';
+            }
+          }
+          
+          h += '<div style="margin-top:12px;padding-top:6px;border-top:1px solid var(--border)">';
+          h += '<div style="color:var(--gold);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Round ' + r + durationLabel + '</div>';
+          
+          // Score strip - same style as score page header
+          var n = (e.players || []).length;
+          if (n > 0) {
+            var scoreFontSize = Math.max(20, Math.min(36, Math.floor((50 - n * 3))));
+            h += '<div style="display:flex;gap:4px;justify-content:space-around;align-items:flex-end;margin-bottom:8px;padding:6px;background:rgba(36, 50, 84, 0.3);border-radius:6px">';
+            (e.players || []).forEach(function(p, i) {
+              h += '<div style="flex:1;text-align:center;min-width:0">';
+              h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6)">' + (runningVp[i] || 0) + '</div>';
+              h += '<div style="font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">' + p.name + '</div>';
+              h += '</div>';
+            });
+            h += '</div>';
+          }
+          
+          // Two columns: scoring events (left) and tech (right)
+          var scoreEvts = evts.filter(function(evt) { return evt.type !== 'tech'; });
+          var techEvts = evts.filter(function(evt) { return evt.type === 'tech'; });
+          
+          h += '<div style="display:flex;gap:8px">';
+          // Left column: scoring events
+          h += '<div style="flex:1;min-width:0">';
+          h += '<div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Scoring</div>';
+          if (!scoreEvts.length) {
+            h += '<div class="dim" style="font-size:10px;font-style:italic">—</div>';
+          } else {
+            scoreEvts.forEach(function(evt) {
+              var p = playerById[evt.playerIdx];
+              if (!p) return;
+              var label = '';
+              var icon = '';
+              if (evt.type === 'public')      { icon = '🎯'; label = evt.name + ' (+' + evt.vp + ' VP)'; }
+              else if (evt.type === 'secret') { icon = '🤫'; label = evt.name + ' (+1 VP)'; }
+              else if (evt.type === 'other')  { icon = '⭐'; label = evt.name + ' (' + (evt.vp >= 0 ? '+' : '') + evt.vp + ' VP)'; }
+              else if (evt.type === 'other-lost') { icon = '↩'; label = 'lost ' + evt.name + ' (' + evt.vp + ' VP)'; }
+              h += '<div style="padding:2px 0;color:' + p.color + ';font-size:11px;text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);word-wrap:break-word">';
+              h += icon + ' <b>' + p.name + '</b><br><span style="margin-left:18px;font-weight:400">' + label + '</span>';
+              h += '</div>';
+            });
+          }
           h += '</div>';
-        });
+          // Right column: tech
+          h += '<div style="flex:1;min-width:0;padding-left:8px;border-left:1px solid var(--border)">';
+          h += '<div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Tech</div>';
+          if (!techEvts.length) {
+            h += '<div class="dim" style="font-size:10px;font-style:italic">—</div>';
+          } else {
+            techEvts.forEach(function(evt) {
+              var p = playerById[evt.playerIdx];
+              if (!p) return;
+              h += '<div style="padding:2px 0;color:' + p.color + ';font-size:11px;text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);word-wrap:break-word">';
+              h += '🔬 <b>' + p.name + '</b><br><span style="margin-left:18px;font-weight:400">' + evt.name + '</span>';
+              h += '</div>';
+            });
+          }
+          h += '</div>';
+          h += '</div>'; // end two-col
+          h += '</div>'; // end round block
+        }
+        
+        if (e.endTime) {
+          h += '<div class="dim" style="font-family:monospace;font-size:10px;margin-top:10px;padding-top:6px;border-top:1px solid var(--border)">Ended ' + formatClockTime(e.endTime);
+          if (e.startTime) {
+            var total = new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
+            h += ' <span class="gold" style="font-family:inherit">· Total ' + formatDuration(total) + '</span>';
+          }
+          h += '</div>';
+        }
+        
         h += '</div></details>';
       }
       
