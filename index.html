@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.029 -->
+<!-- TI4 Tracker 2.030 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -242,7 +242,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.029';
+var VERSION = '2.030';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1369,7 +1369,7 @@ function renderScore() {
   h += '<div class="panel"><div style="display:flex;gap:4px;justify-content:space-around;align-items:flex-end">';
   state.players.forEach(function(p, i) {
     h += '<div style="flex:1;text-align:center;min-width:0">';
-    h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(255,255,255,0.5)">' + p.vp + '</div>';
+    h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6), 0 0 3px rgba(255,255,255,0.3)">' + p.vp + '</div>';
     h += '<div style="font-size:' + nameFontSize + 'px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + p.name + '</div>';
     h += '</div>';
   });
@@ -1402,9 +1402,9 @@ function renderScore() {
       if (!p) return;
       var typeColor = s.type === 'Status' ? '#3a8bce' : s.type === 'Action' ? '#d97706' : '#a569bd';
       h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-radius:6px;padding:6px 10px">';
-      h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.4);border-radius:50%;flex-shrink:0"></div>';
+      h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.25);border-radius:50%;flex-shrink:0"></div>';
       h += '<div style="flex:1;min-width:0">';
-      h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
+      h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
       h += '<div style="font-size:9px;color:' + typeColor + ';letter-spacing:.08em">' + p.name + ' · ' + s.type + '</div>';
       h += '</div>';
       if (isAdmin) {
@@ -1430,7 +1430,7 @@ function renderObjectiveRow(objs, stage) {
       var circles = '';
       (o.scoredBy || []).forEach(function(playerIdx) {
         var p = state.players[playerIdx];
-        if (p) circles += '<div style="width:16px;height:16px;background:' + p.color + ';border:1px solid rgba(255,255,255,.5);margin:1px 0;border-radius:50%"></div>';
+        if (p) circles += '<div style="width:16px;height:16px;background:' + p.color + ';border:1px solid rgba(255,255,255,.3);margin:1px 0;border-radius:50%"></div>';
       });
       h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.3) inset;cursor:pointer;position:relative">';
       // Title
@@ -1834,7 +1834,7 @@ function openObjective(stageKey, idx) {
     h += '<div style="position:absolute;right:-12px;top:8px;display:flex;flex-direction:column;gap:3px">';
     o.scoredBy.forEach(function(playerIdx) {
       var p = state.players[playerIdx];
-      if (p) h += '<div style="width:22px;height:22px;background:' + p.color + ';border:2px solid rgba(255,255,255,.5);border-radius:50%"></div>';
+      if (p) h += '<div style="width:22px;height:22px;background:' + p.color + ';border:2px solid rgba(255,255,255,.3);border-radius:50%"></div>';
     });
     h += '</div>';
   }
@@ -1885,8 +1885,8 @@ function openScoreList() {
     var alreadyScored = (o.scoredBy || []).indexOf(i) >= 0;
     var disabled = alreadyScored ? 'disabled' : '';
     var opacity = alreadyScored ? '0.4' : '1';
-    h += '<button class="btn" ' + disabled + ' onclick="scorePlayer(' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;font-weight:600">';
-    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.6);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += '<button class="btn" ' + disabled + ' onclick="scorePlayer(' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
     h += p.name;
     if (alreadyScored) h += ' <span class="small dim">(already scored)</span>';
     h += '</button>';
@@ -2034,8 +2034,8 @@ function chooseSecretPlayer(secretName, secretType) {
     var atMax = scoredCount >= 3;
     var disabled = atMax ? 'disabled' : '';
     var opacity = atMax ? '0.4' : '1';
-    h += '<button class="btn" ' + disabled + ' onclick="confirmSecretScore(\'' + safeName + '\',\'' + secretType + '\',' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;font-weight:600">';
-    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.6);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += '<button class="btn" ' + disabled + ' onclick="confirmSecretScore(\'' + safeName + '\',\'' + secretType + '\',' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
     h += p.name + ' <span class="small dim" style="text-shadow:none;font-weight:400">(' + scoredCount + '/3)</span>';
     if (atMax) h += ' <span class="small dim" style="text-shadow:none;font-weight:400">— at limit</span>';
     h += '</button>';
