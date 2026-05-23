@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.041 -->
+<!-- TI4 Tracker 2.042 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -255,7 +255,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.041';
+var VERSION = '2.042';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1793,6 +1793,7 @@ function renderHistory() {
       (e.players || []).forEach(function(p, i) { playerById[i] = p; });
       
       var h = '<div class="panel" style="position:relative">';
+      h += '<div id="hist-export-' + e.id + '">';
       h += '<div class="small dim">' + date + ' · ' + (e.rounds || 1) + ' rounds · ' + (e.vpGoal || 10) + ' VP</div>';
       if (e.winner) h += '<div class="gold">🏆 ' + e.winner + '</div>';
       h += '<div class="small dim">' + players + '</div>';
@@ -1927,6 +1928,8 @@ function renderHistory() {
         h += '</div></details>';
       }
       
+      h += '</div>'; // close hist-export wrapper
+      h += '<button class="btn btn-sm" onclick="exportHistoryEntry(' + e.id + ')" style="position:absolute;top:8px;right:40px;color:var(--gold);font-size:14px" title="Export as image">📤</button>';
       h += '<button class="btn btn-sm" onclick="deleteHistory(' + e.id + ')" style="position:absolute;top:8px;right:8px;color:var(--red)">🗑</button>';
       h += '</div>';
       return h;
@@ -2624,6 +2627,59 @@ function vp(i, delta) {
   if (state.players[i].vp >= state.vpGoal) endGame(state.players[i].name);
 }
 
+function exportHistoryEntry(historyId) {
+  // Load html2canvas on demand
+  var loader = function() {
+    return new Promise(function(resolve, reject) {
+      if (window.html2canvas) { resolve(); return; }
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      script.onload = function() { resolve(); };
+      script.onerror = function() { reject(new Error('Failed to load html2canvas')); };
+      document.head.appendChild(script);
+    });
+  };
+  
+  // Show loading hint
+  alert('Generating image... please wait.');
+  
+  loader().then(function() {
+    var el = document.getElementById('hist-export-' + historyId);
+    if (!el) { alert('Could not find history entry.'); return; }
+    
+    // Expand the details section before capturing
+    var detailsEl = el.querySelector('details');
+    var wasOpen = detailsEl && detailsEl.open;
+    if (detailsEl) detailsEl.open = true;
+    
+    return html2canvas(el, {
+      backgroundColor: '#0a0e1a',
+      scale: 2,
+      logging: false,
+      useCORS: true
+    }).then(function(canvas) {
+      // Restore details state
+      if (detailsEl && !wasOpen) detailsEl.open = false;
+      
+      // Trigger download
+      canvas.toBlob(function(blob) {
+        if (!blob) { alert('Failed to generate image.'); return; }
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'TI4-game-' + historyId + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      }, 'image/png');
+    });
+  }).catch(function(err) {
+    alert('Export failed: ' + (err.message || err));
+  });
+}
+window.exportHistoryEntry = exportHistoryEntry;
+
 function viewPhoto(historyId, roundNum) {
   dbGet('history', historyId).then(function(entry) {
     if (!entry || !entry.roundPhotos || !entry.roundPhotos[roundNum]) return;
@@ -2684,17 +2740,30 @@ function captureRoundPhoto() {
     reader.onload = function(ev) {
       var img = new Image();
       img.onload = function() {
-        var maxW = 800;
-        var ratio = Math.min(1, maxW / img.width);
-        var w = Math.floor(img.width * ratio);
-        var h2 = Math.floor(img.height * ratio);
+        // Detect portrait orientation - rotate 90° to landscape
+        var isPortrait = img.height > img.width;
+        var srcW = img.width, srcH = img.height;
         var canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h2;
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h2);
+        var maxW = 1200; // landscape max width
+        
+        if (isPortrait) {
+          // Swap dimensions, scale based on the original height (which becomes width)
+          var ratio = Math.min(1, maxW / srcH);
+          canvas.width = Math.floor(srcH * ratio);
+          canvas.height = Math.floor(srcW * ratio);
+          // Rotate 90° clockwise
+          ctx.translate(canvas.width, 0);
+          ctx.rotate(Math.PI / 2);
+          ctx.drawImage(img, 0, 0, srcW * ratio, srcH * ratio);
+        } else {
+          var ratio2 = Math.min(1, maxW / srcW);
+          canvas.width = Math.floor(srcW * ratio2);
+          canvas.height = Math.floor(srcH * ratio2);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        
         var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-        // Store in IndexedDB photoCache, NOT in state (too big for Supabase sync)
         savePhotoCache(state.round, dataUrl).then(function() {
           closeModal();
           doAdvanceRound();
