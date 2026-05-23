@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.035 -->
+<!-- TI4 Tracker 2.036 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -175,8 +175,20 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 <!-- Status bar (shown in game) -->
 <div id="status-bar" class="status-bar" style="position:sticky;top:0;justify-content:space-between">
   <div onclick="showRoomCode()" style="cursor:pointer;z-index:1"><span class="conn-dot" id="conn-dot"></span><span class="small gold" id="room-display">Room: —</span></div>
-  <div class="round-display" id="round-display">Round 1</div>
-  <div style="z-index:1;visibility:hidden" class="small">Room: ABCDEF</div>
+  <div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center">
+    <div class="round-display" id="round-display">Round 1</div>
+    <div id="round-timer" style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:2px">0s</div>
+  </div>
+  <div style="z-index:1">
+    <button id="btn-pause" onclick="pauseGame()" style="background:none;border:1px solid var(--border2);color:var(--gold);font-size:14px;padding:4px 10px;border-radius:6px;cursor:pointer;display:none">⏸</button>
+  </div>
+</div>
+
+<!-- Pause overlay -->
+<div id="pause-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:20px;backdrop-filter:blur(8px)">
+  <div style="font-size:48px;color:var(--gold);letter-spacing:.2em;text-shadow:0 0 16px rgba(201,168,76,0.6)">⏸ PAUSED</div>
+  <div class="dim small" id="pause-info"></div>
+  <button id="btn-resume" onclick="resumeGame()" class="btn btn-primary" style="font-size:18px;padding:14px 32px">▶ Resume Game</button>
 </div>
 
 <!-- Score screen -->
@@ -242,7 +254,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.035';
+var VERSION = '2.036';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1164,13 +1176,19 @@ var state = {
   endTime: null,
   // Objectives — set up on startGame, revealed by nextRound
   objectives: {
-    stage1: [],  // 5 picks from STAGE1_OBJECTIVES: [{name, desc, revealed:bool}]
-    stage2: []   // 5 picks from STAGE2_OBJECTIVES
+    stage1: [],
+    stage2: []
   },
   // Secret objectives scored: [{name, type, playerIdx}]
   secretsScored: [],
-  // Other objectives scored: [{name, playerIdx}]
-  otherScored: []
+  // Other objectives scored: [{name, vp, playerIdx}]
+  otherScored: [],
+  // Timestamps - ISO strings - one per round start. roundTimestamps[0] = round 1 start, etc.
+  roundTimestamps: [],
+  // Pause state
+  paused: false,
+  pauseStarted: null,    // ISO timestamp when paused began
+  pausedDurationMs: 0    // accumulated paused milliseconds in current round
 };
 
 var isAdmin = false;
@@ -1331,11 +1349,51 @@ function setNav(tab) {
 function renderAll() {
   document.getElementById('round-display').textContent = 'Round ' + state.round;
   if (roomCode) document.getElementById('room-display').textContent = 'Room: ' + roomCode;
+  // Show pause button if admin and game running
+  var pauseBtn = document.getElementById('btn-pause');
+  if (pauseBtn) {
+    pauseBtn.style.display = (isAdmin && state.started && !state.ended) ? '' : 'none';
+  }
+  // Show pause overlay if paused
+  var overlay = document.getElementById('pause-overlay');
+  if (overlay) {
+    if (state.paused) {
+      overlay.style.display = 'flex';
+      var info = document.getElementById('pause-info');
+      if (info) info.textContent = isAdmin ? 'Tap Resume to continue' : 'Waiting for admin to resume...';
+      var btn = document.getElementById('btn-resume');
+      if (btn) btn.style.display = isAdmin ? '' : 'none';
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+  updateRoundTimer();
   if (currentNav === 'score') renderScore();
   if (currentNav === 'setup') renderSetup();
   if (currentNav === 'tech') renderTech();
   if (currentNav === 'history') renderHistory();
 }
+
+function updateRoundTimer() {
+  var el = document.getElementById('round-timer');
+  if (!el) return;
+  if (!state.started || state.ended) {
+    el.textContent = '';
+    return;
+  }
+  var ms = getCurrentRoundElapsedMs();
+  el.textContent = formatDuration(ms);
+  if (state.paused) {
+    el.style.color = 'var(--gold)';
+  } else {
+    el.style.color = 'var(--text-dim)';
+  }
+}
+
+// Tick the timer every second
+setInterval(function() {
+  if (state.started && !state.ended) updateRoundTimer();
+}, 1000);
 
 function renderScore() {
   var el = document.getElementById('score-content');
@@ -1407,7 +1465,7 @@ function renderScore() {
       h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.25);border-radius:50%;flex-shrink:0"></div>';
       h += '<div style="flex:1;min-width:0">';
       h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
-      h += '<div style="font-size:9px;color:' + typeColor + ';letter-spacing:.08em">' + p.name + ' · ' + s.type + '</div>';
+      h += '<div style="font-size:9px;color:' + p.color + ';letter-spacing:.08em;opacity:.85">' + p.name + ' · ' + s.type + '</div>';
       h += '</div>';
       if (isAdmin) {
         h += '<button onclick="removeSecret(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
@@ -1438,7 +1496,7 @@ function renderScore() {
       h += '<div style="width:12px;height:12px;background:' + p.color + ';border:1px solid rgba(255,255,255,.25);border-radius:50%;flex-shrink:0"></div>';
       h += '<div style="flex:1;min-width:0">';
       h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
-      h += '<div style="font-size:9px;color:var(--text-dim);letter-spacing:.08em">' + p.name + ' · +' + (s.vp || 1) + ' VP</div>';
+      h += '<div style="font-size:9px;color:' + p.color + ';letter-spacing:.08em;opacity:.85">' + p.name + ' · +' + (s.vp || 1) + ' VP</div>';
       h += '</div>';
       if (isAdmin) {
         h += '<button onclick="removeOther(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
@@ -1728,12 +1786,48 @@ function renderHistory() {
     el.innerHTML = entries.reverse().map(function(e) {
       var date = new Date(e.playedAt).toLocaleDateString();
       var players = (e.players || []).map(function(p) { return p.name; }).join(', ');
-      return '<div class="panel" style="position:relative">' +
-        '<div class="small dim">' + date + ' · ' + (e.rounds || 1) + ' rounds · ' + (e.vpGoal || 10) + ' VP</div>' +
-        (e.winner ? '<div class="gold">🏆 ' + e.winner + '</div>' : '') +
-        '<div class="small dim">' + players + '</div>' +
-        '<button class="btn btn-sm" onclick="deleteHistory(' + e.id + ')" style="position:absolute;top:8px;right:8px;color:var(--red)">🗑</button>' +
-        '</div>';
+      
+      var h = '<div class="panel" style="position:relative">';
+      h += '<div class="small dim">' + date + ' · ' + (e.rounds || 1) + ' rounds · ' + (e.vpGoal || 10) + ' VP</div>';
+      if (e.winner) h += '<div class="gold">🏆 ' + e.winner + '</div>';
+      h += '<div class="small dim">' + players + '</div>';
+      
+      // Timestamps & durations
+      if (e.startTime || e.endTime || (e.roundTimestamps && e.roundTimestamps.length)) {
+        h += '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.1em">⏱ Timing</summary>';
+        h += '<div style="margin-top:6px;font-size:11px;font-family:monospace;line-height:1.7">';
+        
+        if (e.startTime) h += '<div><span class="dim">Started:</span> ' + formatClockTime(e.startTime) + '</div>';
+        
+        // Round-by-round elapsed times
+        if (e.roundTimestamps && e.roundTimestamps.length > 1) {
+          for (var i = 1; i < e.roundTimestamps.length; i++) {
+            var prev = new Date(e.roundTimestamps[i-1]).getTime();
+            var cur = new Date(e.roundTimestamps[i]).getTime();
+            h += '<div class="dim">Round ' + i + ': ' + formatDuration(cur - prev) + '</div>';
+          }
+          // Last round duration (from last timestamp to endTime)
+          if (e.endTime) {
+            var lastStart = new Date(e.roundTimestamps[e.roundTimestamps.length - 1]).getTime();
+            var endMs = new Date(e.endTime).getTime();
+            h += '<div class="dim">Round ' + e.roundTimestamps.length + ': ' + formatDuration(endMs - lastStart) + '</div>';
+          }
+        }
+        
+        if (e.endTime) h += '<div><span class="dim">Ended:</span> ' + formatClockTime(e.endTime) + '</div>';
+        
+        // Total game duration
+        if (e.startTime && e.endTime) {
+          var total = new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
+          h += '<div class="gold">Total: ' + formatDuration(total) + '</div>';
+        }
+        
+        h += '</div></details>';
+      }
+      
+      h += '<button class="btn btn-sm" onclick="deleteHistory(' + e.id + ')" style="position:absolute;top:8px;right:8px;color:var(--red)">🗑</button>';
+      h += '</div>';
+      return h;
     }).join('');
   });
 }
@@ -2384,6 +2478,10 @@ function startGame() {
   if (noColor) return alert(noColor.name + " hasn't chosen a faction color");
   state.started = true;
   state.startTime = new Date().toISOString();
+  state.roundTimestamps = [state.startTime];
+  state.paused = false;
+  state.pauseStarted = null;
+  state.pausedDurationMs = 0;
   // Assign starting techs
   state.players.forEach(function(p) {
     p.techs = (STARTING_TECH[p.faction] || []).filter(function(t) {
@@ -2415,8 +2513,12 @@ function vp(i, delta) {
 }
 
 function nextRound() {
-  if (!isAdmin || state.ended) return;
+  if (!isAdmin || state.ended || state.paused) return;
   state.round++;
+  // Record timestamp for this round start
+  if (!state.roundTimestamps) state.roundTimestamps = [];
+  state.roundTimestamps.push(new Date().toISOString());
+  state.pausedDurationMs = 0;
   // Reveal the next objective card
   if (state.objectives) {
     var nextS1 = state.objectives.stage1.find(function(o) { return !o.revealed; });
@@ -2432,7 +2534,7 @@ function nextRound() {
 }
 
 function endGame(winnerName) {
-  if (!isAdmin) return;
+  if (!isAdmin || state.paused) return;
   if (!winnerName && !confirm('End game and save results?')) return;
   if (!winnerName) {
     var sorted = state.players.slice().sort(function(a,b) { return b.vp - a.vp; });
@@ -2445,6 +2547,9 @@ function endGame(winnerName) {
   if (state.round > 2) {
     dbSet('history', {
       playedAt: new Date().toISOString(),
+      startTime: state.startTime,
+      endTime: state.endTime,
+      roundTimestamps: state.roundTimestamps || [],
       players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
       winner: winnerName,
       rounds: state.round,
@@ -2453,6 +2558,63 @@ function endGame(winnerName) {
   }
   renderAll();
   if (isAdmin) pushState();
+}
+
+function pauseGame() {
+  if (!isAdmin || !state.started || state.ended) return;
+  if (state.paused) return;
+  state.paused = true;
+  state.pauseStarted = new Date().toISOString();
+  pushState();
+  renderAll();
+}
+
+function resumeGame() {
+  if (!isAdmin || !state.paused) return;
+  // Accumulate pause duration into current round
+  if (state.pauseStarted) {
+    var pauseMs = Date.now() - new Date(state.pauseStarted).getTime();
+    state.pausedDurationMs = (state.pausedDurationMs || 0) + pauseMs;
+  }
+  state.paused = false;
+  state.pauseStarted = null;
+  pushState();
+  renderAll();
+}
+
+window.pauseGame = pauseGame;
+window.resumeGame = resumeGame;
+
+// Helpers for formatting elapsed time
+function formatDuration(ms) {
+  if (ms < 0) ms = 0;
+  var totalSec = Math.floor(ms / 1000);
+  var hours = Math.floor(totalSec / 3600);
+  var mins = Math.floor((totalSec % 3600) / 60);
+  var secs = totalSec % 60;
+  if (hours > 0) return hours + 'h ' + mins + 'm';
+  if (mins > 0) return mins + 'm ' + secs + 's';
+  return secs + 's';
+}
+
+function formatClockTime(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  return d.toLocaleString([], { 
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit' 
+  });
+}
+
+function getCurrentRoundElapsedMs() {
+  if (!state.started || !state.roundTimestamps || !state.roundTimestamps.length) return 0;
+  var lastRoundStart = new Date(state.roundTimestamps[state.roundTimestamps.length - 1]).getTime();
+  var now = Date.now();
+  var pausedNow = 0;
+  if (state.paused && state.pauseStarted) {
+    pausedNow = now - new Date(state.pauseStarted).getTime();
+  }
+  return now - lastRoundStart - (state.pausedDurationMs || 0) - pausedNow;
 }
 
 function tempAutoColor() {
@@ -2480,7 +2642,7 @@ window.tempAutoColor = tempAutoColor;
 
 function newGame() {
   if (!confirm('Start new game? Current game is saved in history.')) return;
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [] };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0 };
   setNav('setup');
   if (isAdmin) pushState();
 }
