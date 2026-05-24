@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.061 -->
+<!-- TI4 Tracker 2.063 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -224,6 +224,11 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   </div>
 </div>
 
+<!-- Strategy screen -->
+<div id="screen-strategy" class="screen body-padded">
+  <div id="strategy-content"></div>
+</div>
+
 <!-- Tech screen -->
 <div id="screen-tech" class="screen body-padded">
   <div class="panel">
@@ -244,6 +249,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 <div id="nav" class="nav">
   <button class="nav-btn" data-nav="setup"><span class="nav-icon">⚙</span>Setup</button>
   <button class="nav-btn" data-nav="score"><span class="nav-icon">🏆</span>Score</button>
+  <button class="nav-btn" data-nav="strategy"><span class="nav-icon">⚔</span>Strategy</button>
   <button class="nav-btn" data-nav="tech"><span class="nav-icon">🔬</span>Tech</button>
   <button class="nav-btn" data-nav="history"><span class="nav-icon">📋</span>History</button>
 </div>
@@ -260,7 +266,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.061';
+var VERSION = '2.063';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1239,7 +1245,9 @@ var state = {
   pauseStarted: null,    // ISO timestamp when paused began
   pausedDurationMs: 0,   // accumulated paused milliseconds in current round
   // Per-round event log for history: [{round, type, playerIdx, name, vp, ...}]
-  roundLog: []
+  roundLog: [],
+  // Strategy cards per round: { 1: { 0: "Leadership", 1: "Trade" }, 2: {...} } keyed by round → playerIdx → cardName
+  strategies: {}
 };
 
 var isAdmin = false;
@@ -1395,7 +1403,7 @@ function setNav(tab) {
   for (var i = 0; i < btns.length; i++) {
     var btnTab = btns[i].getAttribute('data-nav');
     // Disable setup and tech tabs visually after game end
-    if (state.ended && (btnTab === 'setup' || btnTab === 'tech')) {
+    if (state.ended && (btnTab === 'setup' || btnTab === 'tech' || btnTab === 'strategy')) {
       btns[i].style.opacity = '0.3';
       btns[i].style.pointerEvents = 'none';
     } else {
@@ -1435,6 +1443,7 @@ function renderAll() {
   updateRoundTimer();
   if (currentNav === 'score') renderScore();
   if (currentNav === 'setup') renderSetup();
+  if (currentNav === 'strategy') renderStrategy();
   if (currentNav === 'tech') renderTech();
   if (currentNav === 'history') renderHistory();
 }
@@ -1756,6 +1765,177 @@ function renderSetup() {
       '</div>';
   }).join('');
 }
+
+// Strategy cards (TI4 base game)
+var STRATEGY_CARDS = [
+  { num: 1, name: "Leadership",   color: "#e74c3c", desc: "Gain command tokens." },
+  { num: 2, name: "Diplomacy",    color: "#e67e22", desc: "Refresh planets and impose peace." },
+  { num: 3, name: "Politics",     color: "#f1c40f", desc: "Draw agenda cards and become Speaker." },
+  { num: 4, name: "Construction", color: "#27ae60", desc: "Build PDS and Space Docks." },
+  { num: 5, name: "Trade",        color: "#16a085", desc: "Refresh commodities and trade goods." },
+  { num: 6, name: "Warfare",      color: "#2980b9", desc: "Activate and move units." },
+  { num: 7, name: "Technology",   color: "#9b59b6", desc: "Research a technology." },
+  { num: 8, name: "Imperial",     color: "#c9a84c", desc: "Score a public objective; gain VP if you control Mecatol Rex." }
+];
+
+function renderStrategy() {
+  var el = document.getElementById('strategy-content');
+  if (!state.started || !state.players.length) {
+    el.innerHTML = '<div class="panel"><div class="small dim center" style="padding:20px">Start a game to choose strategy cards</div></div>';
+    return;
+  }
+  if (state.ended) {
+    el.innerHTML = '<div class="panel"><div class="small dim center" style="padding:20px">Game has ended</div></div>';
+    return;
+  }
+  
+  var round = state.round;
+  if (!state.strategies) state.strategies = {};
+  if (!state.strategies[round]) state.strategies[round] = {};
+  var roundPicks = state.strategies[round]; // {playerIdx: cardName}
+  
+  // Set of already-picked cards this round
+  var pickedCards = {};
+  Object.keys(roundPicks).forEach(function(playerIdx) { pickedCards[roundPicks[playerIdx]] = parseInt(playerIdx, 10); });
+  
+  var h = '<div class="panel">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Round ' + round + ' · Strategy</div>';
+  h += '</div>';
+  
+  // Player rows with their current pick (or pick button)
+  h += '<div style="display:flex;flex-direction:column;gap:8px">';
+  state.players.forEach(function(p, i) {
+    var picked = roundPicks[i];
+    var card = picked ? STRATEGY_CARDS.find(function(c) { return c.name === picked; }) : null;
+    
+    h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-left:4px solid ' + p.color + ';border-radius:6px;padding:10px 12px">';
+    // Player name in player color
+    h += '<div style="flex:1;min-width:0;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.name + '</div>';
+    
+    if (card) {
+      // Show their chosen card
+      h += '<div style="display:flex;align-items:center;gap:8px">';
+      h += '<div style="background:' + card.color + ';color:#0a1525;font-weight:700;font-size:13px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + card.num + '</div>';
+      h += '<div style="font-size:13px;font-weight:600;color:' + card.color + '">' + card.name + '</div>';
+      if (isAdmin) {
+        h += '<button onclick="clearStrategy(' + i + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+      }
+      h += '</div>';
+    } else if (isAdmin) {
+      h += '<button class="btn btn-sm btn-primary" onclick="openStrategyPicker(' + i + ')">Pick</button>';
+    } else {
+      h += '<span class="small dim">No pick yet</span>';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+  
+  // Indicator if all players have picked
+  var allPicked = state.players.every(function(_, i) { return !!roundPicks[i]; });
+  if (allPicked) {
+    h += '<div class="gold center mt-16 small" style="letter-spacing:.1em">✓ All players picked</div>';
+  } else {
+    var remaining = state.players.length - Object.keys(roundPicks).length;
+    h += '<div class="dim center mt-16 small">' + remaining + ' player' + (remaining !== 1 ? 's' : '') + ' still to pick</div>';
+  }
+  
+  h += '</div>';
+  
+  // Card reference at the bottom (collapsed)
+  h += '<div class="panel mt-16">';
+  h += '<details><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.15em;text-transform:uppercase">Strategy Cards Reference</summary>';
+  h += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
+  STRATEGY_CARDS.forEach(function(c) {
+    h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px">';
+    h += '<div style="background:' + c.color + ';color:#0a1525;font-weight:700;font-size:13px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + c.num + '</div>';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div style="font-size:13px;font-weight:600;color:' + c.color + '">' + c.name + '</div>';
+    h += '<div style="font-size:10px;color:var(--text-dim);line-height:1.3">' + c.desc + '</div>';
+    h += '</div></div>';
+  });
+  h += '</div></details></div>';
+  
+  el.innerHTML = h;
+}
+
+function openStrategyPicker(playerIdx) {
+  if (!isAdmin || state.ended) return;
+  var round = state.round;
+  if (!state.strategies) state.strategies = {};
+  if (!state.strategies[round]) state.strategies[round] = {};
+  var roundPicks = state.strategies[round];
+  
+  // Cards already picked by other players this round
+  var taken = {};
+  Object.keys(roundPicks).forEach(function(pi) {
+    if (parseInt(pi, 10) !== playerIdx) taken[roundPicks[pi]] = parseInt(pi, 10);
+  });
+  
+  var p = state.players[playerIdx];
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Pick Strategy Card</div><div class="small" style="color:' + p.color + ';margin-top:4px">' + p.name + '</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  STRATEGY_CARDS.forEach(function(c) {
+    var takenBy = taken[c.name];
+    var isTaken = (typeof takenBy === 'number');
+    var disabled = isTaken ? 'disabled' : '';
+    var opacity = isTaken ? '0.4' : '1';
+    var safeName = c.name.replace(/'/g, "\\'");
+    h += '<button class="btn" ' + disabled + ' onclick="chooseStrategy(' + playerIdx + ',\'' + safeName + '\')" style="opacity:' + opacity + ';border-color:' + c.color + ';color:' + c.color + ';text-align:left;display:flex;align-items:center;gap:10px;padding:10px 12px">';
+    h += '<div style="background:' + c.color + ';color:#0a1525;font-weight:700;font-size:13px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + c.num + '</div>';
+    h += '<div style="flex:1;min-width:0;text-align:left">';
+    h += '<div style="font-size:14px;font-weight:600">' + c.name + '</div>';
+    if (isTaken) {
+      var taker = state.players[takenBy];
+      h += '<div style="font-size:9px;color:var(--text-dim)">Taken by ' + (taker ? taker.name : '?') + '</div>';
+    } else {
+      h += '<div style="font-size:9px;color:var(--text-dim)">' + c.desc + '</div>';
+    }
+    h += '</div></button>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()">Cancel</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function chooseStrategy(playerIdx, cardName) {
+  if (!isAdmin || state.ended) return;
+  if (!state.strategies) state.strategies = {};
+  if (!state.strategies[state.round]) state.strategies[state.round] = {};
+  // Verify not taken
+  var roundPicks = state.strategies[state.round];
+  var alreadyTakenBy = -1;
+  Object.keys(roundPicks).forEach(function(pi) {
+    if (roundPicks[pi] === cardName && parseInt(pi, 10) !== playerIdx) {
+      alreadyTakenBy = parseInt(pi, 10);
+    }
+  });
+  if (alreadyTakenBy >= 0) {
+    alert(cardName + ' is already taken by ' + state.players[alreadyTakenBy].name + '.');
+    return;
+  }
+  roundPicks[playerIdx] = cardName;
+  closeModal();
+  pushState();
+  renderStrategy();
+}
+
+function clearStrategy(playerIdx) {
+  if (!isAdmin || state.ended) return;
+  if (!state.strategies || !state.strategies[state.round]) return;
+  delete state.strategies[state.round][playerIdx];
+  pushState();
+  renderStrategy();
+}
+
+window.openStrategyPicker = openStrategyPicker;
+window.chooseStrategy = chooseStrategy;
+window.clearStrategy = clearStrategy;
 
 function renderTech() {
   var el = document.getElementById('tech-content');
@@ -2164,6 +2344,23 @@ function renderHistory() {
               h += '<div style="flex:1;text-align:center;min-width:0">';
               h += '<div style="font-size:' + scoreFontSize + 'px;font-weight:700;color:' + p.color + ';line-height:1;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6)">' + (runningVp[i] || 0) + '</div>';
               h += '<div style="font-size:9px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">' + p.name + '</div>';
+              h += '</div>';
+            });
+            h += '</div>';
+          }
+          
+          // Strategy picks for this round
+          var roundStrategies = (e.strategies && e.strategies[r]) ? e.strategies[r] : null;
+          if (roundStrategies && Object.keys(roundStrategies).length) {
+            h += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px;padding:6px;background:rgba(36, 50, 84, 0.2);border-radius:6px">';
+            (e.players || []).forEach(function(p, i) {
+              var cardName = roundStrategies[i];
+              if (!cardName) return;
+              var card = STRATEGY_CARDS.find(function(c) { return c.name === cardName; });
+              if (!card) return;
+              h += '<div style="display:flex;align-items:center;gap:5px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + p.color + ';border-radius:14px;padding:3px 8px 3px 3px">';
+              h += '<div style="background:' + card.color + ';color:#0a1525;font-weight:700;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + card.num + '</div>';
+              h += '<div style="font-size:10px;color:' + p.color + ';font-weight:600;white-space:nowrap;text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + p.name + '</div>';
               h += '</div>';
             });
             h += '</div>';
@@ -2901,6 +3098,7 @@ function startGame() {
   state.pauseStarted = null;
   state.pausedDurationMs = 0;
   state.roundLog = [];
+  state.strategies = {};
   // Clear any leftover photo cache from previous game
   clearPhotoCache();
   // Assign starting techs
@@ -3186,6 +3384,7 @@ function endGame(winnerName) {
         endTime: state.endTime,
         roundTimestamps: state.roundTimestamps || [],
         roundLog: state.roundLog || [],
+        strategies: state.strategies || {},
         roundPhotos: photos,
         players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
         winner: winnerName,
@@ -3326,6 +3525,7 @@ function newGame() {
           endTime: state.endTime,
           roundTimestamps: state.roundTimestamps || [],
           roundLog: state.roundLog || [],
+          strategies: state.strategies || {},
           roundPhotos: photos,
           players: state.players.map(function(p) { return {name: p.name, faction: p.faction, vp: p.vp, color: p.color}; }),
           winner: winnerName,
@@ -3345,7 +3545,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [] };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {} };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
