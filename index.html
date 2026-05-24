@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.057 -->
+<!-- TI4 Tracker 2.059 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -260,7 +260,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.057';
+var VERSION = '2.059';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1821,6 +1821,36 @@ function renderTech() {
       });
     }
     
+    // Sort:
+    // - For faction & faction units: current player's own techs first, then rest alphabetically
+    // - For all other categories: by prereq count ascending, tiebreak alphabetical
+    if (type === 'faction') {
+      var myFT = {};
+      var fdMine = FACTION_DATA[p.faction] || {};
+      (fdMine.factionTechs || []).forEach(function(ft) { myFT[ft.name] = true; });
+      techs.sort(function(a, b) {
+        var aMine = myFT[a.name] ? 0 : 1;
+        var bMine = myFT[b.name] ? 0 : 1;
+        if (aMine !== bMine) return aMine - bMine;
+        return a.name.localeCompare(b.name);
+      });
+    } else if (type === 'factionunit') {
+      techs.sort(function(a, b) {
+        var aMine = (a.faction === p.faction) ? 0 : 1;
+        var bMine = (b.faction === p.faction) ? 0 : 1;
+        if (aMine !== bMine) return aMine - bMine;
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      // Standard categories: by prereq count ascending, tiebreak alphabetical
+      techs.sort(function(a, b) {
+        var aReq = (TECH_PREREQS[a.name] || []).length;
+        var bReq = (TECH_PREREQS[b.name] || []).length;
+        if (aReq !== bReq) return aReq - bReq;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    
     var count = techs.length;
     var expanded = techExpanded[type];
     var arrow = expanded ? '▼' : '▶';
@@ -1954,7 +1984,18 @@ function openTechDetail(techName) {
   if (t.type === 'faction') {
     var fdMine = FACTION_DATA[p.faction] || {};
     var mineHas = (fdMine.factionTechs || []).some(function(ft) { return ft.name === t.name; });
-    if (!mineHas) { canResearch = false; disabledReason = 'Only available to its faction'; }
+    if (!mineHas) {
+      // Find which faction owns this tech
+      var ownerFaction = '';
+      Object.keys(FACTION_DATA).forEach(function(facName) {
+        var fd = FACTION_DATA[facName];
+        if ((fd.factionTechs || []).some(function(ft) { return ft.name === t.name; })) {
+          ownerFaction = facName;
+        }
+      });
+      canResearch = false;
+      disabledReason = ownerFaction ? 'Only available to ' + ownerFaction : 'Only available to its faction';
+    }
   } else if (t.type === 'factionunit') {
     if (t.faction !== p.faction) { canResearch = false; disabledReason = 'Only available to ' + t.faction; }
   }
@@ -1973,8 +2014,17 @@ function openTechDetail(techName) {
   // Name
   h += '<div style="font-size:20px;font-weight:700;color:' + typeColor + ';text-align:center;line-height:1.2;margin-bottom:10px">' + techName + '</div>';
   // For faction/factionunit show which faction
-  if (t.faction) {
-    h += '<div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:10px">' + t.faction + '</div>';
+  var ownerName = t.faction; // faction units already have this
+  if (!ownerName && t.type === 'faction') {
+    Object.keys(FACTION_DATA).forEach(function(facName) {
+      var fd = FACTION_DATA[facName];
+      if ((fd.factionTechs || []).some(function(ft) { return ft.name === t.name; })) {
+        ownerName = facName;
+      }
+    });
+  }
+  if (ownerName) {
+    h += '<div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:10px">' + ownerName + '</div>';
   }
   // Prereq markers (centered)
   var prereqs = TECH_PREREQS[techName] || [];
@@ -2029,7 +2079,9 @@ window.researchTechFromModal = researchTechFromModal;
 window.removeTechFromModal = removeTechFromModal;
 
 function toggleTechCategory(type) {
-  techExpanded[type] = !techExpanded[type];
+  var wasExpanded = techExpanded[type];
+  techExpanded = {}; // collapse all others
+  if (!wasExpanded) techExpanded[type] = true;
   renderTech();
 }
 window.toggleTechCategory = toggleTechCategory;
