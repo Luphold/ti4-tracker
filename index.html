@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.055 -->
+<!-- TI4 Tracker 2.057 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -112,6 +112,9 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .tech-item.faction { background: rgba(201,168,76,.08); color: #c9a855; border-left-color: var(--gold); }
 .tech-section { margin-bottom: 12px; }
 .tech-section-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+/* Tech boxes - fixed width sized to fit "AI Development Algorithm" (longest base-game name) */
+.tech-box { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 9px 12px; cursor: pointer; width: 260px; max-width: 100%; box-sizing: border-box; }
+.tech-list-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* Faction modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; }
@@ -257,7 +260,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.055';
+var VERSION = '2.057';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1790,7 +1793,7 @@ function renderTech() {
   if (!p.techs || !p.techs.length) {
     h += '<div class="small dim center" style="padding:12px">No technologies researched</div>';
   } else {
-    h += '<div style="display:flex;flex-direction:column;gap:6px">';
+    h += '<div class="tech-list-wrap">';
     p.techs.forEach(function(name) {
       h += renderTechBox(name, true, p);
     });
@@ -1831,7 +1834,7 @@ function renderTech() {
     h += '</div>';
     
     if (expanded) {
-      h += '<div style="padding:6px 0 0 6px;display:flex;flex-direction:column;gap:4px">';
+      h += '<div class="tech-list-wrap" style="padding:6px 0 0 6px">';
       if (!techs.length) {
         h += '<div class="small dim" style="padding:6px">All researched</div>';
       } else {
@@ -1898,13 +1901,11 @@ function findTechByName(name) {
 function renderTechBox(techName, isResearched, currentPlayer) {
   var t = findTechByName(techName);
   if (!t) {
-    // Unknown tech - render basic box
-    return '<div onclick="openTechDetail(\'' + techName.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:6px;background:rgba(36, 50, 84, 0.3);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:6px;padding:10px 12px;cursor:pointer;width:100%"><div style="flex:1;font-size:13px">' + techName + '</div></div>';
+    return '<div onclick="openTechDetail(\'' + techName.replace(/'/g, "\\'") + '\')" class="tech-box" style="background:rgba(36, 50, 84, 0.3);border:1px solid var(--border);border-left:3px solid var(--border)"><div style="flex:1;font-size:13px">' + techName + '</div></div>';
   }
   
   var typeColor = getTechTypeColor(t.type);
   
-  // For faction-only techs/units, check if this player can research them
   var ownedBySomeoneElse = false;
   if (t.type === 'faction') {
     var fdMine = FACTION_DATA[currentPlayer.faction] || {};
@@ -1916,7 +1917,6 @@ function renderTechBox(techName, isResearched, currentPlayer) {
   
   var opacity = (ownedBySomeoneElse && !isResearched) ? '0.4' : '1';
   
-  // Prerequisite markers
   var prereqs = TECH_PREREQS[techName] || [];
   var markersHtml = '';
   prereqs.forEach(function(c) {
@@ -1924,15 +1924,13 @@ function renderTechBox(techName, isResearched, currentPlayer) {
              c === 'g' ? '#27ae60' :
              c === 'b' ? '#2980b9' :
              c === 'r' ? '#e74c3c' : '#888';
-    markersHtml += '<div style="width:14px;height:14px;background:' + bg + ';border:1px solid rgba(255,255,255,.3);border-radius:50%;flex-shrink:0"></div>';
+    markersHtml += '<div style="width:12px;height:12px;background:' + bg + ';border:1px solid rgba(255,255,255,.3);border-radius:50%;flex-shrink:0"></div>';
   });
   
   var safeName = techName.replace(/'/g, "\\'");
-  var h = '<div onclick="openTechDetail(\'' + safeName + '\')" style="display:flex;align-items:center;gap:6px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + typeColor + ';border-left:4px solid ' + typeColor + ';border-radius:6px;padding:10px 12px;cursor:pointer;width:100%;opacity:' + opacity + '">';
-  // Tech name - allow truncation with ellipsis on small screens
-  h += '<div style="flex:1;min-width:0;font-size:14px;font-weight:600;color:' + typeColor + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + techName + '</div>';
-  // Prereq markers (always rendered, padding allows ~3 markers)
-  h += '<div style="display:flex;gap:3px;flex-shrink:0;min-width:48px;justify-content:flex-end">' + markersHtml + '</div>';
+  var h = '<div onclick="openTechDetail(\'' + safeName + '\')" class="tech-box" style="background:rgba(36, 50, 84, 0.4);border:1px solid ' + typeColor + ';border-left:4px solid ' + typeColor + ';opacity:' + opacity + '">';
+  h += '<div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:' + typeColor + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + techName + '</div>';
+  h += '<div style="display:flex;gap:2px;flex-shrink:0;width:48px;justify-content:flex-end">' + markersHtml + '</div>';
   h += '</div>';
   return h;
 }
