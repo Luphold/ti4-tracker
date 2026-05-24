@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.063 -->
+<!-- TI4 Tracker 2.066 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -212,6 +212,17 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
       <option value="12">12 VP (Extended)</option>
       <option value="14">14 VP (Epic)</option>
     </select>
+    <div class="mt-16" style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:8px">Features</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:4px 0">
+        <span>⚔ Strategy cards</span>
+        <input type="checkbox" id="toggle-strategy" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:4px 0">
+        <span>🔬 Tech tracking</span>
+        <input type="checkbox" id="toggle-tech" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
+      </label>
+    </div>
   </div>
   <div class="panel">
     <div class="panel-title">Players</div>
@@ -266,7 +277,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.063';
+var VERSION = '2.066';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1246,8 +1257,10 @@ var state = {
   pausedDurationMs: 0,   // accumulated paused milliseconds in current round
   // Per-round event log for history: [{round, type, playerIdx, name, vp, ...}]
   roundLog: [],
-  // Strategy cards per round: { 1: { 0: "Leadership", 1: "Trade" }, 2: {...} } keyed by round → playerIdx → cardName
-  strategies: {}
+  // Strategy cards per round
+  strategies: {},
+  // Feature toggles
+  features: { strategy: true, tech: true }
 };
 
 var isAdmin = false;
@@ -1394,6 +1407,10 @@ function showScreen(id) {
 }
 
 function setNav(tab) {
+  var feat = state.features || { strategy: true, tech: true };
+  // If user tries to navigate to a disabled feature, redirect to score
+  if (tab === 'strategy' && feat.strategy === false) tab = 'score';
+  if (tab === 'tech' && feat.tech === false) tab = 'score';
   // After game ended, only history is accessible
   if (state.ended && tab !== 'history' && tab !== 'score') {
     tab = 'history';
@@ -1402,7 +1419,15 @@ function setNav(tab) {
   var btns = document.querySelectorAll('.nav-btn');
   for (var i = 0; i < btns.length; i++) {
     var btnTab = btns[i].getAttribute('data-nav');
-    // Disable setup and tech tabs visually after game end
+    // Hide tabs for disabled features completely
+    if ((btnTab === 'strategy' && feat.strategy === false) ||
+        (btnTab === 'tech' && feat.tech === false)) {
+      btns[i].style.display = 'none';
+      continue;
+    } else {
+      btns[i].style.display = '';
+    }
+    // Disable setup, tech, strategy tabs visually after game end
     if (state.ended && (btnTab === 'setup' || btnTab === 'tech' || btnTab === 'strategy')) {
       btns[i].style.opacity = '0.3';
       btns[i].style.pointerEvents = 'none';
@@ -1731,6 +1756,11 @@ function renderSetup() {
   
   document.getElementById('vp-goal').value = state.vpGoal;
   document.getElementById('vp-goal').disabled = state.started || readonly;
+  var feat = state.features || { strategy: true, tech: true };
+  var togS = document.getElementById('toggle-strategy');
+  var togT = document.getElementById('toggle-tech');
+  if (togS) { togS.checked = feat.strategy !== false; togS.disabled = state.started || readonly; }
+  if (togT) { togT.checked = feat.tech !== false; togT.disabled = state.started || readonly; }
   document.getElementById('btn-add-player').disabled = state.started || readonly || state.players.length >= 8;
   document.getElementById('btn-add-player').style.display = readonly ? 'none' : '';
   document.getElementById('btn-add-player').textContent = state.players.length >= 8 ? 'Max 8 players' : '+ Add Player (' + state.players.length + '/8)';
@@ -2647,15 +2677,6 @@ function scorePlayer(playerIdx) {
   // Refresh modal and underlying board
   openObjective(currentObjective.stageKey, currentObjective.idx);
   renderScore();
-  // Check win
-  if (state.players[playerIdx].vp >= state.vpGoal) {
-    setTimeout(function() {
-      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
-        closeModal();
-        endGame(state.players[playerIdx].name);
-      }
-    }, 100);
-  }
 }
 
 function unscorePlayer(playerIdx) {
@@ -2843,13 +2864,6 @@ function confirmOtherScore(name, vp, playerIdx) {
   closeModal();
   pushState();
   renderScore();
-  if (state.players[playerIdx].vp >= state.vpGoal) {
-    setTimeout(function() {
-      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
-        endGame(state.players[playerIdx].name);
-      }
-    }, 100);
-  }
 }
 
 function removeOther(idx) {
@@ -2961,13 +2975,6 @@ function confirmSecretScore(secretName, secretType, playerIdx) {
   closeModal();
   pushState();
   renderScore();
-  if (state.players[playerIdx].vp >= state.vpGoal) {
-    setTimeout(function() {
-      if (confirm(state.players[playerIdx].name + ' has reached ' + state.vpGoal + ' VP! End the game?')) {
-        endGame(state.players[playerIdx].name);
-      }
-    }, 100);
-  }
 }
 
 function removeSecret(idx) {
@@ -3101,11 +3108,16 @@ function startGame() {
   state.strategies = {};
   // Clear any leftover photo cache from previous game
   clearPhotoCache();
-  // Assign starting techs
+  // Assign starting techs (only if tech tracking is enabled)
+  var feat = state.features || { strategy: true, tech: true };
   state.players.forEach(function(p) {
-    p.techs = (STARTING_TECH[p.faction] || []).filter(function(t) {
-      return TECHNOLOGIES.find(function(x) { return x.name === t; });
-    });
+    if (feat.tech !== false) {
+      p.techs = (STARTING_TECH[p.faction] || []).filter(function(t) {
+        return TECHNOLOGIES.find(function(x) { return x.name === t; });
+      });
+    } else {
+      p.techs = [];
+    }
     p.vp = 0;
   });
   // Pick 5 random stage 1 and 5 random stage 2 objectives, all face-down
@@ -3204,8 +3216,20 @@ window.viewPhoto = viewPhoto;
 
 function nextRound() {
   if (!isAdmin || state.ended || state.paused) return;
-  // Show photo prompt modal first
+  // Require all players to have picked a strategy card this round (if feature is enabled)
+  var feat = state.features || { strategy: true, tech: true };
+  if (feat.strategy !== false && !allPlayersPickedStrategy()) {
+    alert('All players must pick a strategy card before advancing to the next round.');
+    setNav('strategy');
+    return;
+  }
   promptRoundPhoto();
+}
+
+function allPlayersPickedStrategy() {
+  if (!state.strategies) return false;
+  var roundPicks = state.strategies[state.round] || {};
+  return state.players.every(function(_, i) { return !!roundPicks[i]; });
 }
 
 function promptRoundPhoto() {
@@ -3366,6 +3390,13 @@ window.advanceRoundWithoutPhoto = advanceRoundWithoutPhoto;
 
 function endGame(winnerName) {
   if (!isAdmin || state.paused) return;
+  // Require all players to have picked a strategy card this round (skip if auto-end or feature disabled)
+  var feat = state.features || { strategy: true, tech: true };
+  if (!winnerName && feat.strategy !== false && !allPlayersPickedStrategy()) {
+    alert('All players must pick a strategy card before ending the game.');
+    setNav('strategy');
+    return;
+  }
   if (!winnerName && !confirm('End game and save results?')) return;
   if (!winnerName) {
     var sorted = state.players.slice().sort(function(a,b) { return b.vp - a.vp; });
@@ -3545,7 +3576,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {} };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, features: { strategy: true, tech: true } };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
@@ -3741,6 +3772,18 @@ document.getElementById('btn-start').addEventListener('click', startGame);
 document.getElementById('vp-goal').addEventListener('change', function() {
   state.vpGoal = parseInt(this.value, 10);
   if (isAdmin) pushState();
+});
+document.getElementById('toggle-strategy').addEventListener('change', function() {
+  if (!state.features) state.features = { strategy: true, tech: true };
+  state.features.strategy = this.checked;
+  if (isAdmin) pushState();
+  renderAll();
+});
+document.getElementById('toggle-tech').addEventListener('change', function() {
+  if (!state.features) state.features = { strategy: true, tech: true };
+  state.features.tech = this.checked;
+  if (isAdmin) pushState();
+  renderAll();
 });
 
 var navBtns = document.querySelectorAll('.nav-btn');
