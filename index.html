@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.066 -->
+<!-- TI4 Tracker 2.067 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -155,11 +155,13 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
     
     <div id="login-form" style="display:none">
       <div class="small dim" id="url-display"></div>
-      <button id="btn-resume-admin" class="btn btn-primary btn-full mt-16" style="display:none;background:rgba(93,184,255,0.15);border-color:#5db8ff;color:#5db8ff">↺ Resume Previous Game</button>
-      <button id="btn-admin" class="btn btn-primary btn-full mt-8">Enter as Admin</button>
-      <button id="btn-guest" class="btn btn-full mt-8">Enter as Guest</button>
-      <button id="btn-howto" class="btn btn-full mt-8" style="border-color:var(--border2);color:var(--text-dim)">📖 How To</button>
-      <button id="btn-settings" class="btn btn-sm dim mt-16" style="border:none;background:none">⚙ Change settings</button>
+      <button id="btn-resume-admin" class="btn btn-primary btn-full mt-16" style="display:none;background:rgba(93,184,255,0.15);border-color:#5db8ff;color:#5db8ff;font-size:18px;font-weight:700;padding:18px;letter-spacing:.05em">↺ Resume Previous Game</button>
+      <button id="btn-admin" class="btn btn-primary btn-full mt-16" style="font-size:20px;font-weight:700;padding:22px;letter-spacing:.08em">Enter as Admin</button>
+      <button id="btn-guest" class="btn btn-full mt-8" style="font-size:20px;font-weight:700;padding:22px;letter-spacing:.08em">Enter as Guest</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px">
+        <button id="btn-settings" class="btn btn-sm dim" style="border:none;background:none;color:var(--text-dim);font-size:12px">⚙ Change settings</button>
+        <button id="btn-howto" class="btn btn-sm dim" style="border:none;background:none;color:var(--text-dim);font-size:12px">📖 How To</button>
+      </div>
     </div>
   </div>
 </div>
@@ -231,7 +233,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
       <button id="btn-add-player" class="btn">+ Add Player</button>
       <button id="btn-start" class="btn btn-primary">⚔ Start Game</button>
     </div>
-    <button id="btn-auto-color" class="btn btn-sm mt-8" style="border-color:var(--red);color:var(--red)">TEMP AUTO COLOR</button>
+    <button id="btn-auto-color" class="btn btn-sm mt-8">🎲 Randomize Colors</button>
   </div>
 </div>
 
@@ -277,7 +279,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.066';
+var VERSION = '2.067';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1259,6 +1261,8 @@ var state = {
   roundLog: [],
   // Strategy cards per round
   strategies: {},
+  // How many strategy cards each player picks (1 default, 2 for ≤4 player games if chosen)
+  strategiesPerPlayer: 1,
   // Feature toggles
   features: { strategy: true, tech: true }
 };
@@ -1822,57 +1826,64 @@ function renderStrategy() {
   var round = state.round;
   if (!state.strategies) state.strategies = {};
   if (!state.strategies[round]) state.strategies[round] = {};
-  var roundPicks = state.strategies[round]; // {playerIdx: cardName}
-  
-  // Set of already-picked cards this round
-  var pickedCards = {};
-  Object.keys(roundPicks).forEach(function(playerIdx) { pickedCards[roundPicks[playerIdx]] = parseInt(playerIdx, 10); });
+  var roundPicks = state.strategies[round];
+  var perPlayer = state.strategiesPerPlayer || 1;
   
   var h = '<div class="panel">';
   h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Round ' + round + ' · Strategy</div>';
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Round ' + round + ' · Strategy' + (perPlayer === 2 ? ' (2 each)' : '') + '</div>';
   h += '</div>';
   
-  // Player rows with their current pick (or pick button)
   h += '<div style="display:flex;flex-direction:column;gap:8px">';
   state.players.forEach(function(p, i) {
-    var picked = roundPicks[i];
-    var card = picked ? STRATEGY_CARDS.find(function(c) { return c.name === picked; }) : null;
+    var picksRaw = roundPicks[i];
+    // Normalize to array
+    var picks = Array.isArray(picksRaw) ? picksRaw : (picksRaw ? [picksRaw] : []);
     
-    h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-left:4px solid ' + p.color + ';border-radius:6px;padding:10px 12px">';
-    // Player name in player color
-    h += '<div style="flex:1;min-width:0;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.name + '</div>';
+    h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-left:4px solid ' + p.color + ';border-radius:6px;padding:10px 12px;flex-wrap:wrap">';
+    h += '<div style="flex:1;min-width:120px;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.name + '</div>';
     
-    if (card) {
-      // Show their chosen card
-      h += '<div style="display:flex;align-items:center;gap:8px">';
+    // Show each pick
+    picks.forEach(function(cardName, slot) {
+      var card = STRATEGY_CARDS.find(function(c) { return c.name === cardName; });
+      if (!card) return;
+      h += '<div style="display:flex;align-items:center;gap:6px">';
       h += '<div style="background:' + card.color + ';color:#0a1525;font-weight:700;font-size:13px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + card.num + '</div>';
       h += '<div style="font-size:13px;font-weight:600;color:' + card.color + '">' + card.name + '</div>';
       if (isAdmin) {
-        h += '<button onclick="clearStrategy(' + i + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+        h += '<button onclick="clearStrategy(' + i + ',' + slot + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
       }
       h += '</div>';
-    } else if (isAdmin) {
-      h += '<button class="btn btn-sm btn-primary" onclick="openStrategyPicker(' + i + ')">Pick</button>';
-    } else {
-      h += '<span class="small dim">No pick yet</span>';
+    });
+    
+    // Show Pick button if they still need more
+    if (picks.length < perPlayer && isAdmin) {
+      h += '<button class="btn btn-sm btn-primary" onclick="openStrategyPicker(' + i + ')">+ Pick</button>';
+    } else if (picks.length < perPlayer && !isAdmin) {
+      h += '<span class="small dim">' + (perPlayer - picks.length) + ' to pick</span>';
     }
+    
     h += '</div>';
   });
   h += '</div>';
   
-  // Indicator if all players have picked
-  var allPicked = state.players.every(function(_, i) { return !!roundPicks[i]; });
-  if (allPicked) {
-    h += '<div class="gold center mt-16 small" style="letter-spacing:.1em">✓ All players picked</div>';
+  // Status
+  var totalNeeded = state.players.length * perPlayer;
+  var totalPicked = 0;
+  state.players.forEach(function(_, i) {
+    var picks = roundPicks[i];
+    if (Array.isArray(picks)) totalPicked += picks.length;
+    else if (picks) totalPicked += 1;
+  });
+  if (totalPicked >= totalNeeded) {
+    h += '<div class="gold center mt-16 small" style="letter-spacing:.1em">✓ All picks complete</div>';
   } else {
-    var remaining = state.players.length - Object.keys(roundPicks).length;
-    h += '<div class="dim center mt-16 small">' + remaining + ' player' + (remaining !== 1 ? 's' : '') + ' still to pick</div>';
+    h += '<div class="dim center mt-16 small">' + (totalNeeded - totalPicked) + ' more pick' + ((totalNeeded - totalPicked) !== 1 ? 's' : '') + ' needed</div>';
   }
   
   h += '</div>';
   
-  // Card reference at the bottom (collapsed)
+  // Card reference
   h += '<div class="panel mt-16">';
   h += '<details><summary style="cursor:pointer;color:var(--gold);font-size:11px;letter-spacing:.15em;text-transform:uppercase">Strategy Cards Reference</summary>';
   h += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
@@ -1896,10 +1907,14 @@ function openStrategyPicker(playerIdx) {
   if (!state.strategies[round]) state.strategies[round] = {};
   var roundPicks = state.strategies[round];
   
-  // Cards already picked by other players this round
+  // Collect taken cards across all players this round
   var taken = {};
   Object.keys(roundPicks).forEach(function(pi) {
-    if (parseInt(pi, 10) !== playerIdx) taken[roundPicks[pi]] = parseInt(pi, 10);
+    var picksRaw = roundPicks[pi];
+    var picks = Array.isArray(picksRaw) ? picksRaw : (picksRaw ? [picksRaw] : []);
+    picks.forEach(function(cardName) {
+      taken[cardName] = parseInt(pi, 10);
+    });
   });
   
   var p = state.players[playerIdx];
@@ -1937,28 +1952,48 @@ function chooseStrategy(playerIdx, cardName) {
   if (!isAdmin || state.ended) return;
   if (!state.strategies) state.strategies = {};
   if (!state.strategies[state.round]) state.strategies[state.round] = {};
-  // Verify not taken
   var roundPicks = state.strategies[state.round];
+  
+  // Verify not taken anywhere
   var alreadyTakenBy = -1;
   Object.keys(roundPicks).forEach(function(pi) {
-    if (roundPicks[pi] === cardName && parseInt(pi, 10) !== playerIdx) {
-      alreadyTakenBy = parseInt(pi, 10);
-    }
+    var picksRaw = roundPicks[pi];
+    var picks = Array.isArray(picksRaw) ? picksRaw : (picksRaw ? [picksRaw] : []);
+    picks.forEach(function(cn) {
+      if (cn === cardName) alreadyTakenBy = parseInt(pi, 10);
+    });
   });
   if (alreadyTakenBy >= 0) {
     alert(cardName + ' is already taken by ' + state.players[alreadyTakenBy].name + '.');
     return;
   }
-  roundPicks[playerIdx] = cardName;
+  
+  // Add to player's picks
+  var existing = roundPicks[playerIdx];
+  var arr = Array.isArray(existing) ? existing.slice() : (existing ? [existing] : []);
+  arr.push(cardName);
+  roundPicks[playerIdx] = arr;
+  
   closeModal();
   pushState();
   renderStrategy();
 }
 
-function clearStrategy(playerIdx) {
+function clearStrategy(playerIdx, slot) {
   if (!isAdmin || state.ended) return;
   if (!state.strategies || !state.strategies[state.round]) return;
-  delete state.strategies[state.round][playerIdx];
+  var existing = state.strategies[state.round][playerIdx];
+  if (Array.isArray(existing)) {
+    if (typeof slot === 'number') {
+      existing.splice(slot, 1);
+      if (!existing.length) delete state.strategies[state.round][playerIdx];
+      else state.strategies[state.round][playerIdx] = existing;
+    } else {
+      delete state.strategies[state.round][playerIdx];
+    }
+  } else {
+    delete state.strategies[state.round][playerIdx];
+  }
   pushState();
   renderStrategy();
 }
@@ -2384,14 +2419,17 @@ function renderHistory() {
           if (roundStrategies && Object.keys(roundStrategies).length) {
             h += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px;padding:6px;background:rgba(36, 50, 84, 0.2);border-radius:6px">';
             (e.players || []).forEach(function(p, i) {
-              var cardName = roundStrategies[i];
-              if (!cardName) return;
-              var card = STRATEGY_CARDS.find(function(c) { return c.name === cardName; });
-              if (!card) return;
-              h += '<div style="display:flex;align-items:center;gap:5px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + p.color + ';border-radius:14px;padding:3px 8px 3px 3px">';
-              h += '<div style="background:' + card.color + ';color:#0a1525;font-weight:700;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + card.num + '</div>';
-              h += '<div style="font-size:10px;color:' + p.color + ';font-weight:600;white-space:nowrap;text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + p.name + '</div>';
-              h += '</div>';
+              var picksRaw = roundStrategies[i];
+              if (!picksRaw) return;
+              var picks = Array.isArray(picksRaw) ? picksRaw : [picksRaw];
+              picks.forEach(function(cardName) {
+                var card = STRATEGY_CARDS.find(function(c) { return c.name === cardName; });
+                if (!card) return;
+                h += '<div style="display:flex;align-items:center;gap:5px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + p.color + ';border-radius:14px;padding:3px 8px 3px 3px">';
+                h += '<div style="background:' + card.color + ';color:#0a1525;font-weight:700;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + card.num + '</div>';
+                h += '<div style="font-size:10px;color:' + p.color + ';font-weight:600;white-space:nowrap;text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + p.name + '</div>';
+                h += '</div>';
+              });
             });
             h += '</div>';
           }
@@ -3095,9 +3133,50 @@ function shuffle(arr) {
 
 function startGame() {
   if (!isAdmin || state.players.length < 2) return alert('At least 2 players required');
-  // Find any player without a color
   var noColor = state.players.find(function(p) { return !p.color; });
   if (noColor) return alert(noColor.name + " hasn't chosen a faction color");
+  
+  var feat = state.features || { strategy: true, tech: true };
+  // If strategy enabled and 4 or fewer players, ask if each picks 2 cards
+  if (feat.strategy !== false && state.players.length <= 4) {
+    askStrategyCount(function() {
+      doStartGame();
+    });
+    return;
+  }
+  state.strategiesPerPlayer = 1;
+  doStartGame();
+}
+
+function askStrategyCount(onChosen) {
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">Strategy Cards</div><div class="small dim" style="margin-top:6px">With ' + state.players.length + ' players, each can pick 1 or 2 strategy cards per round.</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:8px">';
+  h += '<button class="btn btn-primary" style="padding:14px" onclick="confirmStrategyCount(1)">1 card per player</button>';
+  h += '<button class="btn btn-primary" style="padding:14px" onclick="confirmStrategyCount(2)">2 cards per player</button>';
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()">Cancel</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+  // Stash callback
+  window._strategyCountCallback = onChosen;
+}
+
+function confirmStrategyCount(n) {
+  state.strategiesPerPlayer = n;
+  closeModal();
+  if (window._strategyCountCallback) {
+    var cb = window._strategyCountCallback;
+    window._strategyCountCallback = null;
+    cb();
+  }
+}
+window.confirmStrategyCount = confirmStrategyCount;
+
+function doStartGame() {
   state.started = true;
   state.startTime = new Date().toISOString();
   state.roundTimestamps = [state.startTime];
@@ -3106,7 +3185,6 @@ function startGame() {
   state.pausedDurationMs = 0;
   state.roundLog = [];
   state.strategies = {};
-  // Clear any leftover photo cache from previous game
   clearPhotoCache();
   // Assign starting techs (only if tech tracking is enabled)
   var feat = state.features || { strategy: true, tech: true };
@@ -3229,7 +3307,12 @@ function nextRound() {
 function allPlayersPickedStrategy() {
   if (!state.strategies) return false;
   var roundPicks = state.strategies[state.round] || {};
-  return state.players.every(function(_, i) { return !!roundPicks[i]; });
+  var per = state.strategiesPerPlayer || 1;
+  return state.players.every(function(_, i) {
+    var p = roundPicks[i];
+    var arr = Array.isArray(p) ? p : (p ? [p] : []);
+    return arr.length >= per;
+  });
 }
 
 function promptRoundPhoto() {
@@ -3576,7 +3659,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, features: { strategy: true, tech: true } };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true } };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
@@ -3811,10 +3894,11 @@ function showHowTo() {
   h += '<li>Tap <b>Enter as Admin</b></li>';
   h += '<li>Share the room code that appears at the top with your players</li>';
   h += '<li>In the <b>Setup</b> tab: tap <b>+ Add Player</b> for each player (2–8 supported)</li>';
-  h += '<li>Edit names, pick faction, tap the color circle to pick a color</li>';
+  h += '<li>Edit names, pick faction, tap the color circle to pick a color (or use <b>🎲 Randomize Colors</b>)</li>';
   h += '<li>All players must have a color before you can start</li>';
   h += '<li>View any faction sheet by tapping <b>📜 Sheet</b> next to the faction selector</li>';
-  h += '<li>When ready, tap <b>⚔ Start Game</b></li>';
+  h += '<li><b>Features</b>: turn off ⚔ Strategy cards or 🔬 Tech tracking if you don\'t want them</li>';
+  h += '<li>When ready, tap <b>⚔ Start Game</b> — with ≤4 players and strategy on, you\'ll be asked whether each player picks 1 or 2 cards per round</li>';
   h += '</ol>';
   
   // Joining as guest
@@ -3837,6 +3921,16 @@ function showHowTo() {
   h += '</ul></li>';
   h += '<li><b>Secret Objectives</b>: tap <b>+ Score Secret</b> → choose objective (grouped by Status/Action/Agenda) → choose player. Each player may only score 3.</li>';
   h += '<li><b>Other Objectives</b>: Custodians, Support for the Throne, Mutiny, Shard of the Throne, etc. Also has free-text "Other" for anything custom.</li>';
+  h += '</ul>';
+  
+  // Strategy
+  h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-top:12px;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px">Strategy Cards</div>';
+  h += '<ul style="padding-left:18px;margin:0">';
+  h += '<li>Every round, each player picks a strategy card on the <b>Strategy</b> tab</li>';
+  h += '<li>Same card can\'t be picked by two players in the same round</li>';
+  h += '<li>All picks must be in before you can tap Next Round or End Game</li>';
+  h += '<li>With ≤4 players, you can choose at start whether each player picks 1 or 2 cards per round</li>';
+  h += '<li>Can be disabled in Setup if you\'re not using strategy cards</li>';
   h += '</ul>';
   
   // Round flow

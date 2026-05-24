@@ -80,9 +80,12 @@ You're done with setup! Your credentials are saved locally on this device — yo
 3. In the **Setup** tab:
    - Tap **+ Add Player** for each player (2–8 supported)
    - Edit names, pick a faction, tap the circle to pick a color
+   - Use **🎲 Randomize Colors** to auto-assign colors to anyone who hasn't picked one
    - All players must have a color before you can start
    - View any faction sheet by tapping **📜 Sheet** next to the faction selector
+   - **Feature toggles**: turn off **⚔ Strategy cards** or **🔬 Tech tracking** if you don't want to use them. The corresponding tab is hidden and rules around them are skipped.
 4. When ready, tap **⚔ Start Game**
+   - With 4 or fewer players and strategy cards enabled, you'll be asked whether each player picks **1 or 2** strategy cards per round
 
 ### Joining a game (Guest)
 
@@ -101,6 +104,10 @@ Guests can view all screens (Setup, Score, Tech, History) but can't make changes
   - Tap **✕** next to a scored player to undo a miss-click
 - **Secret Objectives** panel: tap **+ Score Secret** → choose objective (grouped by Status/Action/Agenda) → choose player. Each player may only score 3 secret objectives.
 - **Other Objectives** panel: covers things like Custodians (Mecatol Rex), Support for the Throne, Mutiny, Shard of the Throne, etc. Also has a free-text "Other" option for anything else.
+
+### Strategy cards
+
+If strategy cards are enabled, every player must pick their card(s) on the **Strategy** tab before you can advance to the next round or end the game. Cards are unique per round — the same card can't be picked by two players in the same round. The 8 standard TI4 strategy cards (Leadership, Diplomacy, Politics, Construction, Trade, Warfare, Technology, Imperial) are all available. With ≤4 players and "2 cards each" chosen at game start, each player picks two cards per round.
 
 ### Round flow
 
