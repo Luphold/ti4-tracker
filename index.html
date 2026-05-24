@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.054 -->
+<!-- TI4 Tracker 2.055 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -257,7 +257,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.054';
+var VERSION = '2.055';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -488,6 +488,49 @@ const STARTING_TECH = {
   "The Crimson Rebellion":[],
   "The Firmament":[],
   "The Obsidian":[],
+};
+
+// Prerequisite color markers for each tech. Colors: y=yellow(cybernetic), g=green(biotic), b=blue(propulsion), r=red(warfare)
+const TECH_PREREQS = {
+  // BIOTIC
+  "Neural Motivator": [],
+  "Dacxive Animators": ["g"],
+  "Hyper Metabolism": ["g","g"],
+  "X-89 Bacterial Weapon": ["g","g","g"],
+  "Psychoarchaeology": [],
+  "Bio-Stims": ["g"],
+  // PROPULSION
+  "Antimass Deflectors": [],
+  "Gravity Drive": ["b"],
+  "Fleet Logistics": ["b","b"],
+  "Light/Wave Deflector": ["b","b","b"],
+  "Dark Energy Tap": [],
+  "Sling Relay": ["b"],
+  // CYBERNETIC
+  "Sarween Tools": [],
+  "Graviton Laser System": ["y"],
+  "Transit Diodes": ["y","y"],
+  "Integrated Economy": ["y","y","y"],
+  "Scanlink Drone Network": [],
+  "Predictive Intelligence": ["y"],
+  // WARFARE
+  "Plasma Scoring": [],
+  "Magen Defense Grid": ["r"],
+  "Duranium Armor": ["r","r"],
+  "Assault Cannon": ["r","r","r"],
+  "AI Development Algorithm": [],
+  "Self Assembly Routines": ["r"],
+  // UNIT UPGRADES
+  "Carrier II": ["b","b"],
+  "Cruiser II": ["g","y","r"],
+  "Destroyer II": ["r","r"],
+  "Dreadnought II": ["b","y"],
+  "Fighter II": ["g","g"],
+  "Infantry II": ["g"],
+  "Mech": ["g","y"],
+  "PDS II": ["r","y"],
+  "Space Dock II": ["y","y"],
+  "War Sun": ["r","r","r","y"]
 };
 
 const FACTION_DATA = {
@@ -1722,7 +1765,6 @@ function renderTech() {
   if (!p) { techPlayer = 0; p = state.players[0]; }
   
   // Player picker - bigger buttons, two rows
-  // Split players into two rows
   var half = Math.ceil(state.players.length / 2);
   var row1 = state.players.slice(0, half);
   var row2 = state.players.slice(half);
@@ -1743,99 +1785,58 @@ function renderTech() {
   
   h += '<div class="small mt-16" style="text-align:center"><b>' + p.name + '</b> — ' + p.faction + '</div>';
   
-  // Current techs - in larger boxes
+  // Researched techs
   h += '<div class="mt-16"><div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px">Researched</div>';
   if (!p.techs || !p.techs.length) {
     h += '<div class="small dim center" style="padding:12px">No technologies researched</div>';
   } else {
     h += '<div style="display:flex;flex-direction:column;gap:6px">';
     p.techs.forEach(function(name) {
-      var t = TECHNOLOGIES.find(function(x) { return x.name === name; });
-      var type = t ? t.type : 'unit';
-      var typeColor = type === 'biotic' ? '#27ae60' :
-                      type === 'propulsion' ? '#2980b9' :
-                      type === 'cybernetic' ? '#d4ac0d' :
-                      type === 'warfare' ? '#e74c3c' :
-                      type === 'unit' ? '#a569bd' :
-                      'var(--gold)';
-      h += '<div style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + typeColor + ';border-left:4px solid ' + typeColor + ';border-radius:6px;padding:10px 12px">';
-      h += '<div style="flex:1;min-width:0">';
-      h += '<div style="font-size:14px;font-weight:600;color:' + typeColor + '">' + name + '</div>';
-      if (t && t.desc) {
-        h += '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3">' + t.desc + '</div>';
-      }
-      h += '</div>';
-      if (isAdmin) {
-        h += '<button onclick="removeTech(\'' + name.replace(/'/g, "\\'") + '\')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:4px 8px">✕</button>';
-      }
-      h += '</div>';
+      h += renderTechBox(name, true, p);
     });
     h += '</div>';
   }
   h += '</div>';
   
-  // Available techs grouped by type - all categories collapsed by default
+  // Available techs grouped by type
   h += '<div class="mt-16"><div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px">Research New</div>';
   
-  var fd = FACTION_DATA[p.faction] || {};
-  var myFT = {};
-  (fd.factionTechs || []).forEach(function(ft) { myFT[ft.name] = true; });
-  
-  // Group order
-  var typeOrder = ['biotic', 'propulsion', 'cybernetic', 'warfare', 'unit', 'faction'];
-  var typeLabels = {biotic:'Biotic', propulsion:'Propulsion', cybernetic:'Cybernetic', warfare:'Warfare', unit:'Unit Upgrades', faction:'Faction'};
-  var typeColors = {biotic:'#27ae60', propulsion:'#2980b9', cybernetic:'#d4ac0d', warfare:'#e74c3c', unit:'#a569bd', faction:'#c9a84c'};
+  var typeOrder = ['biotic', 'propulsion', 'cybernetic', 'warfare', 'unit', 'faction', 'factionunit'];
+  var typeLabels = {biotic:'Biotic', propulsion:'Propulsion', cybernetic:'Cybernetic', warfare:'Warfare', unit:'Unit Upgrades', faction:'Faction', factionunit:'Faction Units'};
   
   typeOrder.forEach(function(type) {
-    // Available techs in this category (not already researched)
-    var techs = TECHNOLOGIES.filter(function(t) {
-      if (t.type !== type) return false;
-      if (p.techs && p.techs.indexOf(t.name) >= 0) return false;
-      return true;
-    });
-    
-    // For faction type, sort: mine first
-    if (type === 'faction') {
-      techs.sort(function(a, b) {
-        var aMine = myFT[a.name] ? 0 : 1;
-        var bMine = myFT[b.name] ? 0 : 1;
-        return aMine - bMine;
+    var techs;
+    if (type === 'factionunit') {
+      techs = getAllFactionUnits().filter(function(t) {
+        return (!p.techs || p.techs.indexOf(t.name) < 0);
+      });
+    } else {
+      techs = TECHNOLOGIES.filter(function(t) {
+        if (t.type !== type) return false;
+        if (p.techs && p.techs.indexOf(t.name) >= 0) return false;
+        return true;
       });
     }
     
     var count = techs.length;
     var expanded = techExpanded[type];
     var arrow = expanded ? '▼' : '▶';
-    var typeColor = typeColors[type];
+    var typeColor = getTechTypeColor(type);
     
     h += '<div style="margin-bottom:6px">';
-    // Category header - clickable
     h += '<div onclick="toggleTechCategory(\'' + type + '\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(36, 50, 84, 0.4);border-left:4px solid ' + typeColor + ';border-radius:6px;cursor:pointer;user-select:none">';
     h += '<span style="color:' + typeColor + ';font-size:12px;font-weight:700;flex:1">' + typeLabels[type] + '</span>';
     h += '<span style="color:var(--text-dim);font-size:11px">' + count + '</span>';
     h += '<span style="color:' + typeColor + ';font-size:10px">' + arrow + '</span>';
     h += '</div>';
     
-    // Tech list - only visible if expanded
     if (expanded) {
       h += '<div style="padding:6px 0 0 6px;display:flex;flex-direction:column;gap:4px">';
       if (!techs.length) {
         h += '<div class="small dim" style="padding:6px">All researched</div>';
       } else {
         techs.forEach(function(t) {
-          var greyed = type === 'faction' && !myFT[t.name];
-          var click = isAdmin && !greyed ? 'onclick="addTech(\'' + t.name.replace(/'/g, "\\'") + '\')"' : '';
-          var opacity = greyed ? '0.3' : '1';
-          var cursor = (isAdmin && !greyed) ? 'pointer' : 'default';
-          h += '<div ' + click + ' style="display:flex;align-items:center;gap:8px;background:rgba(36, 50, 84, 0.2);border:1px solid ' + typeColor + ';border-left:3px solid ' + typeColor + ';border-radius:4px;padding:8px 10px;opacity:' + opacity + ';cursor:' + cursor + '">';
-          h += '<div style="flex:1;min-width:0">';
-          h += '<div style="font-size:13px;color:' + typeColor + ';font-weight:600">' + t.name + '</div>';
-          if (t.desc) {
-            h += '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3">' + t.desc + '</div>';
-          }
-          h += '</div>';
-          if (isAdmin && !greyed) h += '<div style="color:' + typeColor + ';font-size:18px;flex-shrink:0">+</div>';
-          h += '</div>';
+          h += renderTechBox(t.name, false, p);
         });
       }
       h += '</div>';
@@ -1844,9 +1845,190 @@ function renderTech() {
   });
   
   h += '</div>';
-  
   el.innerHTML = h;
 }
+
+// Get all faction units flattened with synthetic tech objects: {name, type:'factionunit', faction, desc}
+function getAllFactionUnits() {
+  var out = [];
+  Object.keys(FACTION_DATA).forEach(function(facName) {
+    var fd = FACTION_DATA[facName] || {};
+    (fd.units || []).forEach(function(unitStr) {
+      // Parse "Name — desc" or "Name - desc"
+      var sep = unitStr.indexOf(' — ');
+      if (sep < 0) sep = unitStr.indexOf(' - ');
+      var name, desc;
+      if (sep > 0) {
+        name = unitStr.slice(0, sep).trim();
+        desc = unitStr.slice(sep + 3).trim();
+      } else {
+        name = unitStr;
+        desc = '';
+      }
+      out.push({ name: name, type: 'factionunit', faction: facName, desc: desc });
+    });
+  });
+  return out;
+}
+
+function getTechTypeColor(type) {
+  return type === 'biotic' ? '#27ae60' :
+         type === 'propulsion' ? '#2980b9' :
+         type === 'cybernetic' ? '#d4ac0d' :
+         type === 'warfare' ? '#e74c3c' :
+         type === 'unit' ? '#a569bd' :
+         type === 'faction' ? '#c9a84c' :
+         type === 'factionunit' ? '#c9a84c' :
+         'var(--gold)';
+}
+
+// Find tech info from any source by name
+function findTechByName(name) {
+  // Check standard TECHNOLOGIES first
+  var t = TECHNOLOGIES.find(function(x) { return x.name === name; });
+  if (t) return t;
+  // Check faction units
+  var allFU = getAllFactionUnits();
+  var fu = allFU.find(function(x) { return x.name === name; });
+  if (fu) return fu;
+  return null;
+}
+
+// Render a single tech box (uniform width, name + prereq markers, click to open detail)
+function renderTechBox(techName, isResearched, currentPlayer) {
+  var t = findTechByName(techName);
+  if (!t) {
+    // Unknown tech - render basic box
+    return '<div onclick="openTechDetail(\'' + techName.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:6px;background:rgba(36, 50, 84, 0.3);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:6px;padding:10px 12px;cursor:pointer;width:100%"><div style="flex:1;font-size:13px">' + techName + '</div></div>';
+  }
+  
+  var typeColor = getTechTypeColor(t.type);
+  
+  // For faction-only techs/units, check if this player can research them
+  var ownedBySomeoneElse = false;
+  if (t.type === 'faction') {
+    var fdMine = FACTION_DATA[currentPlayer.faction] || {};
+    var mineHas = (fdMine.factionTechs || []).some(function(ft) { return ft.name === t.name; });
+    if (!mineHas) ownedBySomeoneElse = true;
+  } else if (t.type === 'factionunit') {
+    if (t.faction !== currentPlayer.faction) ownedBySomeoneElse = true;
+  }
+  
+  var opacity = (ownedBySomeoneElse && !isResearched) ? '0.4' : '1';
+  
+  // Prerequisite markers
+  var prereqs = TECH_PREREQS[techName] || [];
+  var markersHtml = '';
+  prereqs.forEach(function(c) {
+    var bg = c === 'y' ? '#d4ac0d' :
+             c === 'g' ? '#27ae60' :
+             c === 'b' ? '#2980b9' :
+             c === 'r' ? '#e74c3c' : '#888';
+    markersHtml += '<div style="width:14px;height:14px;background:' + bg + ';border:1px solid rgba(255,255,255,.3);border-radius:50%;flex-shrink:0"></div>';
+  });
+  
+  var safeName = techName.replace(/'/g, "\\'");
+  var h = '<div onclick="openTechDetail(\'' + safeName + '\')" style="display:flex;align-items:center;gap:6px;background:rgba(36, 50, 84, 0.4);border:1px solid ' + typeColor + ';border-left:4px solid ' + typeColor + ';border-radius:6px;padding:10px 12px;cursor:pointer;width:100%;opacity:' + opacity + '">';
+  // Tech name - allow truncation with ellipsis on small screens
+  h += '<div style="flex:1;min-width:0;font-size:14px;font-weight:600;color:' + typeColor + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + techName + '</div>';
+  // Prereq markers (always rendered, padding allows ~3 markers)
+  h += '<div style="display:flex;gap:3px;flex-shrink:0;min-width:48px;justify-content:flex-end">' + markersHtml + '</div>';
+  h += '</div>';
+  return h;
+}
+
+// Open tech detail modal
+function openTechDetail(techName) {
+  var t = findTechByName(techName);
+  if (!t) {
+    alert('Tech info not found for: ' + techName);
+    return;
+  }
+  
+  var p = state.players[techPlayer];
+  if (!p) return;
+  var isResearched = p.techs && p.techs.indexOf(techName) >= 0;
+  var typeColor = getTechTypeColor(t.type);
+  
+  // Determine if this player can research this tech
+  var canResearch = true;
+  var disabledReason = '';
+  if (t.type === 'faction') {
+    var fdMine = FACTION_DATA[p.faction] || {};
+    var mineHas = (fdMine.factionTechs || []).some(function(ft) { return ft.name === t.name; });
+    if (!mineHas) { canResearch = false; disabledReason = 'Only available to its faction'; }
+  } else if (t.type === 'factionunit') {
+    if (t.faction !== p.faction) { canResearch = false; disabledReason = 'Only available to ' + t.faction; }
+  }
+  
+  var typeLabel = t.type === 'biotic' ? 'Biotic' :
+                  t.type === 'propulsion' ? 'Propulsion' :
+                  t.type === 'cybernetic' ? 'Cybernetic' :
+                  t.type === 'warfare' ? 'Warfare' :
+                  t.type === 'unit' ? 'Unit Upgrade' :
+                  t.type === 'faction' ? 'Faction Tech' :
+                  t.type === 'factionunit' ? 'Faction Unit' : t.type;
+  
+  var h = '<div style="background:rgba(10, 21, 37, 0.6);border:2px solid ' + typeColor + ';border-radius:10px;padding:16px;box-shadow:0 0 24px ' + typeColor + '40 inset">';
+  // Type label at top
+  h += '<div style="font-size:10px;letter-spacing:.2em;color:' + typeColor + ';text-transform:uppercase;text-align:center;margin-bottom:6px">' + typeLabel + '</div>';
+  // Name
+  h += '<div style="font-size:20px;font-weight:700;color:' + typeColor + ';text-align:center;line-height:1.2;margin-bottom:10px">' + techName + '</div>';
+  // For faction/factionunit show which faction
+  if (t.faction) {
+    h += '<div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:10px">' + t.faction + '</div>';
+  }
+  // Prereq markers (centered)
+  var prereqs = TECH_PREREQS[techName] || [];
+  if (prereqs.length) {
+    h += '<div style="display:flex;justify-content:center;gap:5px;margin-bottom:12px">';
+    prereqs.forEach(function(c) {
+      var bg = c === 'y' ? '#d4ac0d' :
+               c === 'g' ? '#27ae60' :
+               c === 'b' ? '#2980b9' :
+               c === 'r' ? '#e74c3c' : '#888';
+      h += '<div style="width:18px;height:18px;background:' + bg + ';border:1px solid rgba(255,255,255,.4);border-radius:50%"></div>';
+    });
+    h += '</div>';
+  }
+  // Description
+  h += '<div style="color:#dde4f0;font-size:13px;line-height:1.5;padding:8px 4px">' + (t.desc || '(no description)') + '</div>';
+  h += '</div>';
+  
+  // Buttons
+  h += '<div class="row mt-16" style="gap:8px">';
+  h += '<button class="btn" onclick="closeModal()" style="flex:1">Close</button>';
+  if (isAdmin && !state.ended) {
+    if (isResearched) {
+      h += '<button class="btn btn-danger" onclick="removeTechFromModal(\'' + techName.replace(/'/g, "\\'") + '\')" style="flex:1">Remove</button>';
+    } else if (canResearch) {
+      h += '<button class="btn btn-primary" onclick="researchTechFromModal(\'' + techName.replace(/'/g, "\\'") + '\')" style="flex:1">Research</button>';
+    } else {
+      h += '<button class="btn" disabled style="flex:1;opacity:.4">' + (disabledReason || 'Cannot research') + '</button>';
+    }
+  }
+  h += '</div>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function researchTechFromModal(name) {
+  closeModal();
+  addTech(name);
+}
+
+function removeTechFromModal(name) {
+  closeModal();
+  removeTech(name);
+}
+
+window.openTechDetail = openTechDetail;
+window.researchTechFromModal = researchTechFromModal;
+window.removeTechFromModal = removeTechFromModal;
 
 function toggleTechCategory(type) {
   techExpanded[type] = !techExpanded[type];
