@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.067 -->
+<!-- TI4 Tracker 2.068 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -279,7 +279,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.067';
+var VERSION = '2.068';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -2947,16 +2947,18 @@ function openSecretPicker() {
     grouped[t].sort(function(a, b) { return a.name.localeCompare(b.name); });
   });
   
-  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Choose Secret Objective</div></div>';
+  var h = '<div style="text-align:center;margin-bottom:8px"><div class="gold" style="font-size:16px">Choose Secret Objective</div></div>';
   typeOrder.forEach(function(t) {
     if (!grouped[t] || !grouped[t].length) return;
     var typeColor = t === 'Status' ? '#3a8bce' : t === 'Action' ? '#d97706' : '#a569bd';
-    h += '<div style="margin-bottom:10px">';
-    h += '<div style="font-size:10px;letter-spacing:.15em;color:' + typeColor + ';text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px">' + t + '</div>';
+    h += '<div style="margin-bottom:8px">';
+    h += '<div style="font-size:10px;letter-spacing:.15em;color:' + typeColor + ';text-transform:uppercase;padding-bottom:3px;border-bottom:1px solid var(--border);margin-bottom:4px">' + t + '</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">';
     grouped[t].forEach(function(s) {
       var safeName = s.name.replace(/'/g, "\\'");
-      h += '<div onclick="chooseSecretPlayer(\'' + safeName + '\',\'' + s.type + '\')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;margin-bottom:3px;cursor:pointer;background:rgba(36, 50, 84, 0.3);font-size:13px">' + s.name + '</div>';
+      h += '<div onclick="chooseSecretPlayer(\'' + safeName + '\',\'' + s.type + '\')" style="padding:6px 4px;border:1px solid var(--border2);border-radius:5px;cursor:pointer;background:rgba(36, 50, 84, 0.3);font-size:10px;line-height:1.2;text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center">' + s.name + '</div>';
     });
+    h += '</div>';
     h += '</div>';
   });
   h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
