@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.079 -->
+<!-- TI4 Tracker 2.080 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.079';
+var VERSION = '2.080';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1390,6 +1390,28 @@ function pushState() {
     if (r.error) log('Push error: ' + r.error.message);
     else log('Pushed state OK');
     return r;
+  });
+}
+
+// Guest-safe push: fetch current state, merge in new claims, push back. Prevents racing the admin's edits.
+function pushClaims() {
+  if (!supabase || !roomCode) return Promise.resolve();
+  return fetchState().then(function(serverState) {
+    if (!serverState) return;
+    // Merge: take server state, replace only the claims map with our local version
+    serverState.claims = state.claims || {};
+    return supabase.from('ti4_rooms').upsert({
+      room_code: roomCode,
+      state: serverState,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'room_code' }).then(function(r) {
+      if (r.error) log('Push claims error: ' + r.error.message);
+      else log('Pushed claims OK');
+      // Update local state too
+      state = serverState;
+      renderAll();
+      return r;
+    });
   });
 }
 
@@ -4081,8 +4103,17 @@ function enterGame(code) {
     setNav(isAdmin && !state.started ? 'setup' : 'score');
     // Auto-prompt for claim only if feature is enabled
     var feat = state.features || {};
-    if (state.started && !state.ended && myClaimedSlot < 0 && myUsername && feat.claim !== false) {
-      setTimeout(openClaimPicker, 500);
+    if (state.started && !state.ended && myClaimedSlot < 0 && feat.claim !== false) {
+      if (myUsername) {
+        setTimeout(openClaimPicker, 500);
+      } else if (!isAdmin) {
+        // Guest with no username - prompt them to set one
+        setTimeout(function() {
+          if (confirm('You need a username to claim a player slot and send messages. Go to settings to set one?')) {
+            window.location.reload();
+          }
+        }, 500);
+      }
     }
   });
 }
@@ -4128,23 +4159,20 @@ function openClaimPicker() {
 }
 
 function claimAdminOnly() {
-  // Admin opts out of player slot - no messaging
   if (myClaimedSlot >= 0 && state.claims) {
     delete state.claims[myClaimedSlot];
   }
   myClaimedSlot = -1;
   dbSet('settings', { k: 'claim:' + roomCode, v: -1 });
-  pushState();
+  pushClaims();
   closeModal();
   renderAll();
 }
-window.claimAdminOnly = claimAdminOnly;
 
 function claimSlot(slotIdx) {
   if (!myUsername) return;
   if (!state.players || !state.players[slotIdx]) return;
   if (!state.claims) state.claims = {};
-  // Check it's not already claimed by someone else
   var existing = state.claims[slotIdx];
   if (existing && existing !== myUsername) {
     alert('Already claimed by ' + existing);
@@ -4156,9 +4184,8 @@ function claimSlot(slotIdx) {
   });
   state.claims[slotIdx] = myUsername;
   myClaimedSlot = slotIdx;
-  // Persist locally for this room
   dbSet('settings', { k: 'claim:' + roomCode, v: slotIdx });
-  pushState();
+  pushClaims();
   closeModal();
   renderAll();
 }
@@ -4168,12 +4195,13 @@ function releaseClaim() {
   if (state.claims) delete state.claims[myClaimedSlot];
   myClaimedSlot = -1;
   dbSet('settings', { k: 'claim:' + roomCode, v: -1 });
-  pushState();
+  pushClaims();
   renderAll();
 }
 
 window.openClaimPicker = openClaimPicker;
 window.claimSlot = claimSlot;
+window.claimAdminOnly = claimAdminOnly;
 window.releaseClaim = releaseClaim;
 
 function enterAsAdmin() {
