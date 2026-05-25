@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.068 -->
+<!-- TI4 Tracker 2.069 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -144,13 +144,15 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
     <div class="version" id="version-display">v2.002</div>
     
     <div id="setup-form">
-      <label>Supabase Project URL</label>
+      <label>Username</label>
+      <input id="inp-username" type="text" placeholder="Your display name" maxlength="20">
+      <label class="mt-8">Supabase Project URL</label>
       <input id="inp-url" type="url" placeholder="https://xxxx.supabase.co">
       <label>Supabase Anon Key</label>
       <input id="inp-key" type="text" placeholder="eyJ...">
       <button id="btn-save" class="btn btn-primary btn-full mt-16">Save & Connect</button>
       <button id="btn-reset" class="btn btn-full mt-8">↺ Clear Cache & Reload</button>
-      <div class="small dim mt-8">Get these from Supabase → Settings → API Keys.<br>Use just the base URL (no /rest/v1/).</div>
+      <div class="small dim mt-8">Get the URL and Anon Key from Supabase → Settings → API Keys.<br>Use just the base URL (no /rest/v1/). Username is shown when sending messages in-game.</div>
     </div>
     
     <div id="login-form" style="display:none">
@@ -184,7 +186,11 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
     <div class="round-display" id="round-display">Round 1</div>
     <div id="round-timer" style="font-size:13px;color:var(--text-dim);font-family:monospace">0s</div>
   </div>
-  <div style="z-index:1;flex:1;text-align:right">
+  <div style="z-index:1;flex:1;text-align:right;display:flex;justify-content:flex-end;gap:6px">
+    <button id="btn-msgs" onclick="openMessages()" style="background:none;border:1px solid var(--border2);color:var(--text);font-size:14px;padding:4px 10px;border-radius:6px;cursor:pointer;position:relative;display:none">
+      💬
+      <span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--red);color:white;font-weight:700;font-size:9px;min-width:16px;height:16px;border-radius:8px;padding:0 4px;line-height:16px"></span>
+    </button>
     <button id="btn-pause" onclick="pauseGame()" style="background:none;border:1px solid var(--border2);color:var(--gold);font-size:14px;padding:4px 10px;border-radius:6px;cursor:pointer;display:none">⏸</button>
   </div>
 </div>
@@ -279,7 +285,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.068';
+var VERSION = '2.069';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1270,6 +1276,9 @@ var state = {
 var isAdmin = false;
 var currentNav = 'score';
 var roomCode = null;
+var myUsername = '';
+var messagesPollInterval = null;
+var seenMessageIds = {};
 var supabase = null;
 var pollInterval = null;
 var techPlayer = 0;
@@ -1455,6 +1464,11 @@ function renderAll() {
   var pauseBtn = document.getElementById('btn-pause');
   if (pauseBtn) {
     pauseBtn.style.display = (isAdmin && state.started && !state.ended) ? '' : 'none';
+  }
+  var msgBtn = document.getElementById('btn-msgs');
+  if (msgBtn) {
+    // Show messages button if in a game and username set
+    msgBtn.style.display = (myUsername && roomCode && state.started) ? '' : 'none';
   }
   // Show pause overlay if paused
   var overlay = document.getElementById('pause-overlay');
@@ -3541,6 +3555,236 @@ function unlogEvent(type, playerIdx, name) {
   }
 }
 
+// =========== MESSAGING ===========
+
+function openMessages() {
+  // Show inbox: list of senders with last message preview + compose new
+  if (!roomCode || !supabase) {
+    alert('Not connected to a game.');
+    return;
+  }
+  fetchMessages().then(function(msgs) {
+    var byPartner = {}; // partner name -> array of msgs (oldest first)
+    msgs.forEach(function(m) {
+      var partner = (m.sender === myUsername) ? m.recipient : m.sender;
+      if (!byPartner[partner]) byPartner[partner] = [];
+      byPartner[partner].push(m);
+    });
+    
+    var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">💬 Messages</div></div>';
+    
+    // Compose new message button - lists all other players
+    h += '<button class="btn btn-primary btn-full" onclick="openComposeMessage()">+ New Message</button>';
+    
+    // Conversations
+    var partners = Object.keys(byPartner).sort();
+    if (!partners.length) {
+      h += '<div class="small dim center mt-16" style="padding:12px">No messages yet</div>';
+    } else {
+      h += '<div class="small dim mt-16" style="margin-bottom:4px">Conversations</div>';
+      h += '<div style="display:flex;flex-direction:column;gap:4px">';
+      partners.forEach(function(partner) {
+        var list = byPartner[partner];
+        var last = list[list.length - 1];
+        var unread = 0;
+        list.forEach(function(m) {
+          if (m.recipient === myUsername && !seenMessageIds[m.id]) unread++;
+        });
+        var safeP = partner.replace(/'/g, "\\'");
+        // Try to find partner color from game state
+        var partnerColor = 'var(--text)';
+        var partnerPlayer = state.players.find(function(p) { return p.name === partner; });
+        if (partnerPlayer) partnerColor = partnerPlayer.color;
+        h += '<div onclick="openThread(\'' + safeP + '\')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-left:4px solid ' + partnerColor + ';border-radius:6px;cursor:pointer">';
+        h += '<div style="flex:1;min-width:0">';
+        h += '<div style="font-weight:600;color:' + partnerColor + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + partner + '</div>';
+        var prevText = (last.sender === myUsername ? 'You: ' : '') + last.body;
+        if (prevText.length > 50) prevText = prevText.slice(0, 50) + '…';
+        h += '<div class="small dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(prevText) + '</div>';
+        h += '</div>';
+        if (unread > 0) {
+          h += '<div style="background:var(--red);color:white;font-weight:700;font-size:11px;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 6px">' + unread + '</div>';
+        }
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+    h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+    
+    var modal = document.getElementById('modal');
+    modal.classList.add('modal-center');
+    modal.innerHTML = h;
+    modal.classList.add('open');
+    document.getElementById('modal-overlay').classList.add('open');
+  }).catch(function(e) {
+    alert('Could not load messages: ' + e.message);
+  });
+}
+
+function openComposeMessage() {
+  if (!state.players || !state.players.length) {
+    alert('No players in this game yet.');
+    return;
+  }
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Send Message To</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  state.players.forEach(function(p) {
+    if (p.name === myUsername) return; // can't send to self
+    var safeName = p.name.replace(/'/g, "\\'");
+    h += '<button class="btn" onclick="openThread(\'' + safeName + '\')" style="border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += p.name;
+    h += '</button>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-16" onclick="openMessages()">Back</button>';
+  document.getElementById('modal').innerHTML = h;
+}
+
+function openThread(partner) {
+  if (!myUsername) {
+    alert('Please set your username in Settings first.');
+    return;
+  }
+  fetchMessages().then(function(msgs) {
+    var thread = msgs.filter(function(m) {
+      return (m.sender === partner && m.recipient === myUsername) ||
+             (m.sender === myUsername && m.recipient === partner);
+    });
+    // Mark all incoming as seen
+    thread.forEach(function(m) {
+      if (m.recipient === myUsername) seenMessageIds[m.id] = true;
+    });
+    // Persist seen IDs
+    dbSet('settings', { k: 'seenMessageIds', v: JSON.stringify(seenMessageIds) });
+    
+    var partnerColor = 'var(--text)';
+    var partnerPlayer = state.players.find(function(p) { return p.name === partner; });
+    if (partnerPlayer) partnerColor = partnerPlayer.color;
+    
+    var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">';
+    h += '<button onclick="openMessages()" style="background:none;border:none;color:var(--text);font-size:16px;cursor:pointer;padding:4px">←</button>';
+    h += '<div style="flex:1;text-align:center"><div style="font-size:14px;font-weight:700;color:' + partnerColor + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + partner + '</div></div>';
+    h += '<div style="width:24px"></div>';
+    h += '</div>';
+    
+    h += '<div id="thread-msgs" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px">';
+    if (!thread.length) {
+      h += '<div class="small dim center" style="padding:20px">No messages yet — start the conversation</div>';
+    } else {
+      thread.forEach(function(m) {
+        var fromMe = (m.sender === myUsername);
+        var bubble = fromMe
+          ? 'background:rgba(93,184,255,0.15);border:1px solid rgba(93,184,255,0.4);align-self:flex-end;max-width:80%'
+          : 'background:rgba(36, 50, 84, 0.5);border:1px solid var(--border);align-self:flex-start;max-width:80%';
+        var time = new Date(m.sent_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        h += '<div style="' + bubble + ';border-radius:10px;padding:8px 12px">';
+        h += '<div style="font-size:13px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap">' + escapeHtml(m.body) + '</div>';
+        h += '<div class="small dim" style="font-size:9px;margin-top:3px;text-align:right">' + time + '</div>';
+        h += '</div>';
+      });
+    }
+    h += '</div>';
+    
+    // Compose area
+    h += '<div style="margin-top:12px;display:flex;gap:6px">';
+    h += '<input id="msg-input" type="text" placeholder="Type a message…" maxlength="500" style="flex:1" onkeydown="if(event.key===\'Enter\') sendMessage(\'' + partner.replace(/'/g, "\\'") + '\')">';
+    h += '<button class="btn btn-primary" onclick="sendMessage(\'' + partner.replace(/'/g, "\\'") + '\')" style="padding:10px 14px">Send</button>';
+    h += '</div>';
+    h += '<button class="btn btn-full mt-8" onclick="closeModal()">Close</button>';
+    
+    var modal = document.getElementById('modal');
+    modal.classList.add('modal-center');
+    modal.innerHTML = h;
+    modal.classList.add('open');
+    document.getElementById('modal-overlay').classList.add('open');
+    // Scroll to bottom
+    setTimeout(function() {
+      var el = document.getElementById('thread-msgs');
+      if (el) el.scrollTop = el.scrollHeight;
+      var inp = document.getElementById('msg-input');
+      if (inp) inp.focus();
+    }, 50);
+    updateMessageBadge();
+  });
+}
+
+function sendMessage(partner) {
+  var input = document.getElementById('msg-input');
+  if (!input) return;
+  var body = input.value.trim();
+  if (!body) return;
+  if (!myUsername) { alert('Please set your username first.'); return; }
+  
+  supabase.from('ti4_messages').insert({
+    room_code: roomCode,
+    sender: myUsername,
+    recipient: partner,
+    body: body
+  }).then(function(r) {
+    if (r.error) {
+      alert('Send failed: ' + r.error.message);
+      return;
+    }
+    input.value = '';
+    openThread(partner); // refresh
+  });
+}
+
+function fetchMessages() {
+  if (!supabase || !roomCode) return Promise.resolve([]);
+  return supabase.from('ti4_messages')
+    .select('*')
+    .eq('room_code', roomCode)
+    .order('sent_at', { ascending: true })
+    .then(function(r) {
+      if (r.error) throw new Error(r.error.message);
+      return r.data || [];
+    });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Poll for unread count badge
+function updateMessageBadge() {
+  if (!supabase || !roomCode || !myUsername) return;
+  fetchMessages().then(function(msgs) {
+    var unread = 0;
+    msgs.forEach(function(m) {
+      if (m.recipient === myUsername && !seenMessageIds[m.id]) unread++;
+    });
+    var badge = document.getElementById('msg-badge');
+    if (badge) {
+      if (unread > 0) {
+        badge.style.display = '';
+        badge.textContent = unread;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }).catch(function() {});
+}
+
+function startMessagePolling() {
+  if (messagesPollInterval) clearInterval(messagesPollInterval);
+  // Load seen IDs from settings
+  dbGet('settings', 'seenMessageIds').then(function(rec) {
+    if (rec && rec.v) {
+      try { seenMessageIds = JSON.parse(rec.v) || {}; } catch (e) { seenMessageIds = {}; }
+    }
+    updateMessageBadge();
+  });
+  messagesPollInterval = setInterval(updateMessageBadge, 5000);
+}
+
+window.openMessages = openMessages;
+window.openComposeMessage = openComposeMessage;
+window.openThread = openThread;
+window.sendMessage = sendMessage;
+
+
 function pauseGame() {
   if (!isAdmin || !state.started || state.ended) return;
   if (state.paused) return;
@@ -3726,7 +3970,7 @@ function enterGame(code) {
   document.getElementById('status-bar').classList.add('visible');
   document.getElementById('nav').classList.add('visible');
   document.getElementById('conn-dot').classList.add('on');
-  // Admin goes to setup if no game started, guests always go to score
+  startMessagePolling();
   setNav(isAdmin && !state.started ? 'setup' : 'score');
 }
 
@@ -3797,7 +4041,8 @@ function joinGame() {
 function saveSettings() {
   var url = document.getElementById('inp-url').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
   var key = document.getElementById('inp-key').value.trim();
-  if (!url || !key) return alert('Please enter both URL and key');
+  var username = document.getElementById('inp-username').value.trim().slice(0, 20);
+  if (!url || !key) return alert('Please enter URL and key');
   if (!url.startsWith('https://')) return alert('URL must start with https://');
   
   var btn = document.getElementById('btn-save');
@@ -3807,6 +4052,7 @@ function saveSettings() {
   initSupabase(url, key).then(function() {
     dbSet('settings', { k: 'url', v: url });
     dbSet('settings', { k: 'key', v: key });
+    if (username) dbSet('settings', { k: 'username', v: username });
     log('Settings saved');
     document.getElementById('url-display').textContent = url;
     document.getElementById('setup-form').style.display = 'none';
@@ -3993,9 +4239,15 @@ window.showHowTo = showHowTo;
 
 function init() {
   log('Init starting');
-  Promise.all([dbGet('settings', 'url'), dbGet('settings', 'key')]).then(function(results) {
+  Promise.all([dbGet('settings', 'url'), dbGet('settings', 'key'), dbGet('settings', 'username')]).then(function(results) {
     var url = results[0] && results[0].v;
     var key = results[1] && results[1].v;
+    var username = results[2] && results[2].v;
+    if (username) {
+      myUsername = username;
+      var u = document.getElementById('inp-username');
+      if (u) u.value = username;
+    }
     if (url && key) {
       log('Have saved credentials');
       document.getElementById('url-display').textContent = url;
