@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.076 -->
+<!-- TI4 Tracker 2.078 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -230,6 +230,14 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
         <span>🔬 Tech tracking</span>
         <input type="checkbox" id="toggle-tech" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
       </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:4px 0">
+        <span>👤 Player claim</span>
+        <input type="checkbox" id="toggle-claim" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
+      </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:4px 0">
+        <span>💬 Messages</span>
+        <input type="checkbox" id="toggle-messages" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
+      </label>
     </div>
   </div>
   <div class="panel">
@@ -285,7 +293,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.076';
+var VERSION = '2.078';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1270,7 +1278,7 @@ var state = {
   // How many strategy cards each player picks (1 default, 2 for ≤4 player games if chosen)
   strategiesPerPlayer: 1,
   // Feature toggles
-  features: { strategy: true, tech: true },
+  features: { strategy: true, tech: true, claim: true, messages: true },
   // Player slot claims: { playerIdx: username } - who is "playing" each slot
   claims: {}
 };
@@ -1462,7 +1470,16 @@ function setNav(tab) {
 // =============================================================================
 function renderAll() {
   document.getElementById('round-display').textContent = 'Round ' + state.round;
-  if (roomCode) document.getElementById('room-display').textContent = 'Room: ' + roomCode;
+  if (roomCode) {
+    var roomEl = document.getElementById('room-display');
+    if (state.started) {
+      roomEl.textContent = 'Room: ' + roomCode;
+      roomEl.style.opacity = '';
+    } else {
+      roomEl.textContent = 'Setting up…';
+      roomEl.style.opacity = '0.6';
+    }
+  }
   // Show pause button if admin and game running
   var pauseBtn = document.getElementById('btn-pause');
   if (pauseBtn) {
@@ -1470,15 +1487,18 @@ function renderAll() {
   }
   var msgBtn = document.getElementById('btn-msgs');
   if (msgBtn) {
+    var feat3 = state.features || {};
     var inGame = roomCode && state.started && !state.ended;
-    if (inGame && myClaimedSlot >= 0) {
+    var messagesOn = feat3.messages !== false;
+    var claimOn = feat3.claim !== false;
+    if (inGame && messagesOn && myClaimedSlot >= 0) {
       // Show messages button
       msgBtn.style.display = '';
       msgBtn.innerHTML = '💬<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--red);color:white;font-weight:700;font-size:9px;min-width:16px;height:16px;border-radius:8px;padding:0 4px;line-height:16px"></span>';
       msgBtn.onclick = openMessages;
       msgBtn.title = 'Messages';
-    } else if (inGame && myUsername) {
-      // Show claim button (no slot yet)
+    } else if (inGame && claimOn && myUsername && myClaimedSlot < 0) {
+      // Show claim button (no slot yet, claim is on)
       msgBtn.style.display = '';
       msgBtn.innerHTML = '👤';
       msgBtn.onclick = openClaimPicker;
@@ -1791,11 +1811,15 @@ function renderSetup() {
   
   document.getElementById('vp-goal').value = state.vpGoal;
   document.getElementById('vp-goal').disabled = state.started || readonly;
-  var feat = state.features || { strategy: true, tech: true };
+  var feat = state.features || { strategy: true, tech: true, claim: true, messages: true };
   var togS = document.getElementById('toggle-strategy');
   var togT = document.getElementById('toggle-tech');
+  var togC = document.getElementById('toggle-claim');
+  var togM = document.getElementById('toggle-messages');
   if (togS) { togS.checked = feat.strategy !== false; togS.disabled = state.started || readonly; }
   if (togT) { togT.checked = feat.tech !== false; togT.disabled = state.started || readonly; }
+  if (togC) { togC.checked = feat.claim !== false; togC.disabled = state.started || readonly; }
+  if (togM) { togM.checked = feat.messages !== false; togM.disabled = state.started || readonly; }
   document.getElementById('btn-add-player').disabled = state.started || readonly || state.players.length >= 8;
   document.getElementById('btn-add-player').style.display = readonly ? 'none' : '';
   document.getElementById('btn-add-player').textContent = state.players.length >= 8 ? 'Max 8 players' : '+ Add Player (' + state.players.length + '/8)';
@@ -2634,14 +2658,30 @@ function showFaction(name) {
 
 function showRoomCode() {
   if (!roomCode) return;
+  if (!state.started) {
+    // Hide room code before game starts so nobody joins early
+    var h = '<div style="text-align:center;padding:20px 0">';
+    h += '<div class="small dim" style="letter-spacing:.15em">⏳ SETUP IN PROGRESS</div>';
+    h += '<div class="dim" style="margin:20px 0;font-size:14px;line-height:1.5">The room code will appear here<br>once the game has started.</div>';
+    h += '</div>';
+    h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+    var modal = document.getElementById('modal');
+    modal.classList.add('modal-center');
+    modal.innerHTML = h;
+    modal.classList.add('open');
+    document.getElementById('modal-overlay').classList.add('open');
+    return;
+  }
   var h = '<div style="text-align:center;padding:20px 0">';
   h += '<div class="small dim" style="letter-spacing:.15em">ROOM CODE</div>';
   h += '<div class="gold" style="font-size:64px;font-weight:700;letter-spacing:.15em;margin:20px 0;font-family:monospace">' + roomCode + '</div>';
   h += '<div class="small dim">Share this code with guests to join</div>';
   h += '</div>';
   h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
-  document.getElementById('modal').innerHTML = h;
-  document.getElementById('modal').classList.add('open');
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
   document.getElementById('modal-overlay').classList.add('open');
 }
 window.showRoomCode = showRoomCode;
@@ -3257,8 +3297,9 @@ function doStartGame() {
   state.otherScored = [];
   setNav('score');
   pushState();
-  // Prompt admin to claim a slot (or pick Admin Only)
-  if (isAdmin && myUsername) {
+  // Prompt admin to claim a slot if feature enabled
+  var feat2 = state.features || {};
+  if (isAdmin && myUsername && feat2.claim !== false) {
     setTimeout(openClaimPicker, 300);
   }
 }
@@ -3593,6 +3634,8 @@ function unlogEvent(type, playerIdx, name) {
 
 function openMessages() {
   log('openMessages: roomCode=' + roomCode + ' supabase=' + !!supabase + ' myClaimedSlot=' + myClaimedSlot + ' myUsername=' + myUsername);
+  var feat = state.features || {};
+  if (feat.messages === false) { alert('Messages are disabled for this game.'); return; }
   if (!roomCode || !supabase) {
     alert('Not connected to a game.');
     return;
@@ -3968,7 +4011,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true }, claims: {} };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true, claim: true, messages: true }, claims: {} };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
@@ -4034,7 +4077,6 @@ function enterGame(code) {
   document.getElementById('nav').classList.add('visible');
   document.getElementById('conn-dot').classList.add('on');
   startMessagePolling();
-  // Restore claimed slot from local storage if we previously claimed in this room
   dbGet('settings', 'claim:' + roomCode).then(function(rec) {
     if (rec && typeof rec.v === 'number' && rec.v >= 0) {
       myClaimedSlot = rec.v;
@@ -4046,14 +4088,17 @@ function enterGame(code) {
       myClaimedSlot = -1;
     }
     setNav(isAdmin && !state.started ? 'setup' : 'score');
-    // After game has started, prompt to claim a slot if not yet claimed
-    if (state.started && !state.ended && myClaimedSlot < 0 && myUsername) {
+    // Auto-prompt for claim only if feature is enabled
+    var feat = state.features || {};
+    if (state.started && !state.ended && myClaimedSlot < 0 && myUsername && feat.claim !== false) {
       setTimeout(openClaimPicker, 500);
     }
   });
 }
 
 function openClaimPicker() {
+  var feat = state.features || {};
+  if (feat.claim === false) { alert('Player claim is disabled for this game.'); return; }
   if (!myUsername) {
     alert('Please set your username in Settings first.');
     return;
@@ -4271,14 +4316,26 @@ document.getElementById('vp-goal').addEventListener('change', function() {
   if (isAdmin) pushState();
 });
 document.getElementById('toggle-strategy').addEventListener('change', function() {
-  if (!state.features) state.features = { strategy: true, tech: true };
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, messages: true };
   state.features.strategy = this.checked;
   if (isAdmin) pushState();
   renderAll();
 });
 document.getElementById('toggle-tech').addEventListener('change', function() {
-  if (!state.features) state.features = { strategy: true, tech: true };
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, messages: true };
   state.features.tech = this.checked;
+  if (isAdmin) pushState();
+  renderAll();
+});
+document.getElementById('toggle-claim').addEventListener('change', function() {
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, messages: true };
+  state.features.claim = this.checked;
+  if (isAdmin) pushState();
+  renderAll();
+});
+document.getElementById('toggle-messages').addEventListener('change', function() {
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, messages: true };
+  state.features.messages = this.checked;
   if (isAdmin) pushState();
   renderAll();
 });
