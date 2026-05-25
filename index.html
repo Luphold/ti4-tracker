@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.080 -->
+<!-- TI4 Tracker 2.081 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.080';
+var VERSION = '2.081';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1382,14 +1382,28 @@ function generateRoomCode() {
 
 function pushState() {
   if (!supabase || !roomCode || !isAdmin) return Promise.resolve();
-  return supabase.from('ti4_rooms').upsert({
-    room_code: roomCode,
-    state: state,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'room_code' }).then(function(r) {
-    if (r.error) log('Push error: ' + r.error.message);
-    else log('Pushed state OK');
-    return r;
+  // Merge: fetch latest claims from server before pushing, so we don't wipe a guest's recent claim.
+  return fetchState().then(function(serverState) {
+    if (serverState && serverState.claims) {
+      // Merge server's claims into our local state
+      var serverClaims = serverState.claims;
+      var localClaims = state.claims || {};
+      // Take union: anyone the server thinks has a claim AND anyone we think has a claim.
+      // For conflicts (same slot, different usernames), prefer server's value since they may be more recent.
+      var merged = {};
+      Object.keys(localClaims).forEach(function(k) { merged[k] = localClaims[k]; });
+      Object.keys(serverClaims).forEach(function(k) { merged[k] = serverClaims[k]; });
+      state.claims = merged;
+    }
+    return supabase.from('ti4_rooms').upsert({
+      room_code: roomCode,
+      state: state,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'room_code' }).then(function(r) {
+      if (r.error) log('Push error: ' + r.error.message);
+      else log('Pushed state OK');
+      return r;
+    });
   });
 }
 
