@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.069 -->
+<!-- TI4 Tracker 2.071 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -235,11 +235,11 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   <div class="panel">
     <div class="panel-title">Players</div>
     <div id="setup-players"></div>
-    <div class="row mt-8">
+    <div class="row mt-8" style="align-items:stretch">
       <button id="btn-add-player" class="btn">+ Add Player</button>
+      <button id="btn-auto-color" class="btn" style="flex:0 0 auto;padding:10px 12px;font-size:12px;font-weight:700;background:linear-gradient(90deg,#ff5e5e,#ffae42,#ffd700,#7cd957,#5db8ff,#a569bd,#ff5ea1);-webkit-background-clip:text;background-clip:text;color:transparent;border-color:var(--border2)">🎲 Randomize<br>Colors</button>
       <button id="btn-start" class="btn btn-primary">⚔ Start Game</button>
     </div>
-    <button id="btn-auto-color" class="btn btn-sm mt-8">🎲 Randomize Colors</button>
   </div>
 </div>
 
@@ -285,7 +285,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.069';
+var VERSION = '2.071';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -3716,7 +3716,7 @@ function sendMessage(partner) {
   if (!body) return;
   if (!myUsername) { alert('Please set your username first.'); return; }
   
-  supabase.from('ti4_messages').insert({
+  supabase.from('ti4_chat').insert({
     room_code: roomCode,
     sender: myUsername,
     recipient: partner,
@@ -3733,7 +3733,7 @@ function sendMessage(partner) {
 
 function fetchMessages() {
   if (!supabase || !roomCode) return Promise.resolve([]);
-  return supabase.from('ti4_messages')
+  return supabase.from('ti4_chat')
     .select('*')
     .eq('room_code', roomCode)
     .order('sent_at', { ascending: true })
