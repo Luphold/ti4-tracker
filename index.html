@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.071 -->
+<!-- TI4 Tracker 2.072 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -285,7 +285,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.071';
+var VERSION = '2.072';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1270,13 +1270,16 @@ var state = {
   // How many strategy cards each player picks (1 default, 2 for ≤4 player games if chosen)
   strategiesPerPlayer: 1,
   // Feature toggles
-  features: { strategy: true, tech: true }
+  features: { strategy: true, tech: true },
+  // Player slot claims: { playerIdx: username } - who is "playing" each slot
+  claims: {}
 };
 
 var isAdmin = false;
 var currentNav = 'score';
 var roomCode = null;
 var myUsername = '';
+var myClaimedSlot = -1;  // index of player slot I've claimed (-1 = none)
 var messagesPollInterval = null;
 var seenMessageIds = {};
 var supabase = null;
@@ -1467,8 +1470,8 @@ function renderAll() {
   }
   var msgBtn = document.getElementById('btn-msgs');
   if (msgBtn) {
-    // Show messages button if in a game and username set
-    msgBtn.style.display = (myUsername && roomCode && state.started) ? '' : 'none';
+    // Show messages button if game started and I've claimed a slot
+    msgBtn.style.display = (myClaimedSlot >= 0 && roomCode && state.started) ? '' : 'none';
   }
   // Show pause overlay if paused
   var overlay = document.getElementById('pause-overlay');
@@ -1790,13 +1793,25 @@ function renderSetup() {
     var colorInfo = TI4_COLORS.find(function(c) { return c.hex === p.color; });
     var colorName = colorInfo ? colorInfo.name : 'none';
     
-    // Color button — empty circle or filled. Disabled if guest or game started.
     var locked = state.started || readonly;
     var colorStyle = p.color
       ? 'background:' + p.color + ';border:2px solid var(--gold)'
       : 'background:transparent;border:2px dashed var(--text-dim)';
     var colorBtn = '<button onclick="openColorPicker(' + i + ')" ' + (locked ? 'disabled' : '') +
       ' style="flex:0 0 36px;width:36px;height:36px;border-radius:50%;' + colorStyle + ';cursor:' + (locked ? 'default' : 'pointer') + ';padding:0" title="' + colorName + '"></button>';
+    
+    // Claim indicator (only after game started)
+    var claims = state.claims || {};
+    var claimedBy = claims[i];
+    var claimBadge = '';
+    if (state.started) {
+      if (claimedBy) {
+        var isMine = (claimedBy === myUsername);
+        claimBadge = '<div style="font-size:10px;color:' + (isMine ? 'var(--gold)' : 'var(--text-dim)') + ';margin-top:4px">👤 ' + claimedBy + (isMine ? ' (you)' : '') + '</div>';
+      } else {
+        claimBadge = '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;font-style:italic">👤 unclaimed</div>';
+      }
+    }
     
     return '<div class="player-card">' +
       '<div class="row">' +
@@ -1809,6 +1824,7 @@ function renderSetup() {
         ? '<div style="font-size:11px;color:var(--text-dim)">Faction' + (state.started ? ' (locked)' : '') + '</div><div class="row"><div class="gold" style="padding:8px 0;flex:1">' + p.faction + '</div><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Faction Sheet</button></div>'
         : '<div class="row"><select onchange="updatePlayer(' + i + ',\'faction\',this.value)" style="flex:1">' + opts + '</select><button class="btn btn-sm" onclick="showFaction(\'' + p.faction.replace(/'/g, "\\'") + '\')" style="flex:0">📜 Sheet</button></div>'
       ) +
+      claimBadge +
       '</div>' +
       '</div>';
   }).join('');
@@ -3558,29 +3574,37 @@ function unlogEvent(type, playerIdx, name) {
 // =========== MESSAGING ===========
 
 function openMessages() {
-  // Show inbox: list of senders with last message preview + compose new
   if (!roomCode || !supabase) {
     alert('Not connected to a game.');
     return;
   }
+  if (myClaimedSlot < 0) {
+    // Prompt to claim first
+    if (confirm('You need to claim a player slot to send/receive messages. Open claim picker?')) {
+      openClaimPicker();
+    }
+    return;
+  }
+  var myPlayerName = state.players[myClaimedSlot] && state.players[myClaimedSlot].name;
+  if (!myPlayerName) {
+    alert('Your claimed slot is no longer valid. Re-claim a slot.');
+    myClaimedSlot = -1;
+    return;
+  }
+  
   fetchMessages().then(function(msgs) {
-    var byPartner = {}; // partner name -> array of msgs (oldest first)
+    var byPartner = {};
     msgs.forEach(function(m) {
-      var partner = (m.sender === myUsername) ? m.recipient : m.sender;
+      var partner = (m.sender === myPlayerName) ? m.recipient : m.sender;
       if (!byPartner[partner]) byPartner[partner] = [];
       byPartner[partner].push(m);
     });
     
-    var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">💬 Messages</div></div>';
-    
-    // Compose new message button - lists all other players
+    var h = '<div style="text-align:center;margin-bottom:8px"><div class="gold" style="font-size:18px">💬 Messages</div><div class="small dim" style="margin-top:4px">Playing as <b style="color:' + (state.players[myClaimedSlot].color) + '">' + myPlayerName + '</b></div></div>';
     h += '<button class="btn btn-primary btn-full" onclick="openComposeMessage()">+ New Message</button>';
     
-    // Conversations
     var partners = Object.keys(byPartner).sort();
-    if (!partners.length) {
-      h += '<div class="small dim center mt-16" style="padding:12px">No messages yet</div>';
-    } else {
+    if (partners.length) {
       h += '<div class="small dim mt-16" style="margin-bottom:4px">Conversations</div>';
       h += '<div style="display:flex;flex-direction:column;gap:4px">';
       partners.forEach(function(partner) {
@@ -3588,17 +3612,16 @@ function openMessages() {
         var last = list[list.length - 1];
         var unread = 0;
         list.forEach(function(m) {
-          if (m.recipient === myUsername && !seenMessageIds[m.id]) unread++;
+          if (m.recipient === myPlayerName && !seenMessageIds[m.id]) unread++;
         });
         var safeP = partner.replace(/'/g, "\\'");
-        // Try to find partner color from game state
         var partnerColor = 'var(--text)';
         var partnerPlayer = state.players.find(function(p) { return p.name === partner; });
         if (partnerPlayer) partnerColor = partnerPlayer.color;
         h += '<div onclick="openThread(\'' + safeP + '\')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(36, 50, 84, 0.4);border:1px solid var(--border);border-left:4px solid ' + partnerColor + ';border-radius:6px;cursor:pointer">';
         h += '<div style="flex:1;min-width:0">';
         h += '<div style="font-weight:600;color:' + partnerColor + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3),0.5px -0.5px 0 rgba(255,255,255,.3),-0.5px 0.5px 0 rgba(255,255,255,.3),0.5px 0.5px 0 rgba(255,255,255,.3)">' + partner + '</div>';
-        var prevText = (last.sender === myUsername ? 'You: ' : '') + last.body;
+        var prevText = (last.sender === myPlayerName ? 'You: ' : '') + last.body;
         if (prevText.length > 50) prevText = prevText.slice(0, 50) + '…';
         h += '<div class="small dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(prevText) + '</div>';
         h += '</div>';
@@ -3626,36 +3649,51 @@ function openComposeMessage() {
     alert('No players in this game yet.');
     return;
   }
+  if (myClaimedSlot < 0) {
+    alert('You need to claim a player slot first.');
+    return;
+  }
+  var myPlayerName = state.players[myClaimedSlot].name;
+  var claims = state.claims || {};
+  
   var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:16px">Send Message To</div></div>';
   h += '<div style="display:flex;flex-direction:column;gap:6px">';
-  state.players.forEach(function(p) {
-    if (p.name === myUsername) return; // can't send to self
+  var anyAvail = false;
+  state.players.forEach(function(p, i) {
+    if (i === myClaimedSlot) return; // skip self
+    var claimedBy = claims[i];
+    var disabled = !claimedBy ? 'disabled' : '';
+    var opacity = !claimedBy ? '0.4' : '1';
+    var subtitle = claimedBy ? 'Claimed by ' + claimedBy : 'Not claimed — no one will receive';
+    if (claimedBy) anyAvail = true;
     var safeName = p.name.replace(/'/g, "\\'");
-    h += '<button class="btn" onclick="openThread(\'' + safeName + '\')" style="border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
-    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
-    h += p.name;
+    h += '<button class="btn" ' + disabled + ' onclick="openThread(\'' + safeName + '\')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600;display:flex;flex-direction:column;align-items:flex-start;gap:2px">';
+    h += '<div><span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>' + p.name + '</div>';
+    h += '<div class="small dim" style="text-shadow:none;font-weight:400;font-size:10px;margin-left:22px">' + subtitle + '</div>';
     h += '</button>';
   });
   h += '</div>';
+  if (!anyAvail) {
+    h += '<div class="small dim center mt-8" style="padding:8px">No other players have claimed their slot yet — messages would be undeliverable</div>';
+  }
   h += '<button class="btn btn-full mt-16" onclick="openMessages()">Back</button>';
   document.getElementById('modal').innerHTML = h;
 }
 
 function openThread(partner) {
-  if (!myUsername) {
-    alert('Please set your username in Settings first.');
+  if (myClaimedSlot < 0) {
+    alert('You need to claim a player slot first.');
     return;
   }
+  var myPlayerName = state.players[myClaimedSlot].name;
   fetchMessages().then(function(msgs) {
     var thread = msgs.filter(function(m) {
-      return (m.sender === partner && m.recipient === myUsername) ||
-             (m.sender === myUsername && m.recipient === partner);
+      return (m.sender === partner && m.recipient === myPlayerName) ||
+             (m.sender === myPlayerName && m.recipient === partner);
     });
-    // Mark all incoming as seen
     thread.forEach(function(m) {
-      if (m.recipient === myUsername) seenMessageIds[m.id] = true;
+      if (m.recipient === myPlayerName) seenMessageIds[m.id] = true;
     });
-    // Persist seen IDs
     dbSet('settings', { k: 'seenMessageIds', v: JSON.stringify(seenMessageIds) });
     
     var partnerColor = 'var(--text)';
@@ -3673,7 +3711,7 @@ function openThread(partner) {
       h += '<div class="small dim center" style="padding:20px">No messages yet — start the conversation</div>';
     } else {
       thread.forEach(function(m) {
-        var fromMe = (m.sender === myUsername);
+        var fromMe = (m.sender === myPlayerName);
         var bubble = fromMe
           ? 'background:rgba(93,184,255,0.15);border:1px solid rgba(93,184,255,0.4);align-self:flex-end;max-width:80%'
           : 'background:rgba(36, 50, 84, 0.5);border:1px solid var(--border);align-self:flex-start;max-width:80%';
@@ -3686,7 +3724,6 @@ function openThread(partner) {
     }
     h += '</div>';
     
-    // Compose area
     h += '<div style="margin-top:12px;display:flex;gap:6px">';
     h += '<input id="msg-input" type="text" placeholder="Type a message…" maxlength="500" style="flex:1" onkeydown="if(event.key===\'Enter\') sendMessage(\'' + partner.replace(/'/g, "\\'") + '\')">';
     h += '<button class="btn btn-primary" onclick="sendMessage(\'' + partner.replace(/'/g, "\\'") + '\')" style="padding:10px 14px">Send</button>';
@@ -3698,7 +3735,6 @@ function openThread(partner) {
     modal.innerHTML = h;
     modal.classList.add('open');
     document.getElementById('modal-overlay').classList.add('open');
-    // Scroll to bottom
     setTimeout(function() {
       var el = document.getElementById('thread-msgs');
       if (el) el.scrollTop = el.scrollHeight;
@@ -3714,11 +3750,12 @@ function sendMessage(partner) {
   if (!input) return;
   var body = input.value.trim();
   if (!body) return;
-  if (!myUsername) { alert('Please set your username first.'); return; }
+  if (myClaimedSlot < 0) { alert('Claim a player slot first.'); return; }
+  var myPlayerName = state.players[myClaimedSlot].name;
   
   supabase.from('ti4_chat').insert({
     room_code: roomCode,
-    sender: myUsername,
+    sender: myPlayerName,
     recipient: partner,
     body: body
   }).then(function(r) {
@@ -3727,33 +3764,22 @@ function sendMessage(partner) {
       return;
     }
     input.value = '';
-    openThread(partner); // refresh
+    openThread(partner);
   });
 }
 
-function fetchMessages() {
-  if (!supabase || !roomCode) return Promise.resolve([]);
-  return supabase.from('ti4_chat')
-    .select('*')
-    .eq('room_code', roomCode)
-    .order('sent_at', { ascending: true })
-    .then(function(r) {
-      if (r.error) throw new Error(r.error.message);
-      return r.data || [];
-    });
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Poll for unread count badge
 function updateMessageBadge() {
-  if (!supabase || !roomCode || !myUsername) return;
+  if (!supabase || !roomCode || myClaimedSlot < 0) {
+    var badge = document.getElementById('msg-badge');
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  var myPlayerName = state.players[myClaimedSlot] && state.players[myClaimedSlot].name;
+  if (!myPlayerName) return;
   fetchMessages().then(function(msgs) {
     var unread = 0;
     msgs.forEach(function(m) {
-      if (m.recipient === myUsername && !seenMessageIds[m.id]) unread++;
+      if (m.recipient === myPlayerName && !seenMessageIds[m.id]) unread++;
     });
     var badge = document.getElementById('msg-badge');
     if (badge) {
@@ -3905,7 +3931,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true } };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true }, claims: {} };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
@@ -3971,8 +3997,90 @@ function enterGame(code) {
   document.getElementById('nav').classList.add('visible');
   document.getElementById('conn-dot').classList.add('on');
   startMessagePolling();
-  setNav(isAdmin && !state.started ? 'setup' : 'score');
+  // Restore claimed slot from local storage if we previously claimed in this room
+  dbGet('settings', 'claim:' + roomCode).then(function(rec) {
+    if (rec && typeof rec.v === 'number') {
+      myClaimedSlot = rec.v;
+      // Verify slot still has my username (might have been kicked)
+      var c = state.claims || {};
+      if (c[myClaimedSlot] !== myUsername) {
+        myClaimedSlot = -1;
+      }
+    }
+    setNav(isAdmin && !state.started ? 'setup' : 'score');
+    // After game has started, prompt to claim a slot if not yet claimed and have username
+    if (state.started && !state.ended && myClaimedSlot < 0 && myUsername) {
+      setTimeout(openClaimPicker, 500);
+    }
+  });
 }
+
+function openClaimPicker() {
+  if (!myUsername) return;  // need username to claim
+  if (!state.players || !state.players.length) return;
+  
+  var claims = state.claims || {};
+  
+  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">Claim a Player</div><div class="small dim" style="margin-top:6px">Pick which player you\'re controlling. Used for receiving private messages.</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px">';
+  state.players.forEach(function(p, i) {
+    var claimedBy = claims[i];
+    var isMine = (claimedBy === myUsername);
+    var isTakenByOther = (claimedBy && !isMine);
+    var disabled = isTakenByOther ? 'disabled' : '';
+    var opacity = isTakenByOther ? '0.4' : '1';
+    var label = isMine ? ' (you)' : (isTakenByOther ? ' — claimed by ' + claimedBy : '');
+    h += '<button class="btn" ' + disabled + ' onclick="claimSlot(' + i + ')" style="opacity:' + opacity + ';border-color:' + p.color + ';color:' + p.color + ';text-align:left;text-shadow:-1px -1px 0 rgba(255,255,255,.6), 1px -1px 0 rgba(255,255,255,.6), -1px 1px 0 rgba(255,255,255,.6), 1px 1px 0 rgba(255,255,255,.6);font-weight:600">';
+    h += '<span style="display:inline-block;width:14px;height:14px;background:' + p.color + ';border:1px solid rgba(255,255,255,.35);border-radius:50%;vertical-align:middle;margin-right:8px"></span>';
+    h += p.name + label;
+    h += '</button>';
+  });
+  h += '</div>';
+  // Skip / Cancel
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()" style="border:none;background:none;color:var(--text-dim)">Spectate only (skip)</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function claimSlot(slotIdx) {
+  if (!myUsername) return;
+  if (!state.players || !state.players[slotIdx]) return;
+  if (!state.claims) state.claims = {};
+  // Check it's not already claimed by someone else
+  var existing = state.claims[slotIdx];
+  if (existing && existing !== myUsername) {
+    alert('Already claimed by ' + existing);
+    return;
+  }
+  // Release any previous claim by me
+  Object.keys(state.claims).forEach(function(k) {
+    if (state.claims[k] === myUsername) delete state.claims[k];
+  });
+  state.claims[slotIdx] = myUsername;
+  myClaimedSlot = slotIdx;
+  // Persist locally for this room
+  dbSet('settings', { k: 'claim:' + roomCode, v: slotIdx });
+  pushState();
+  closeModal();
+  renderAll();
+}
+
+function releaseClaim() {
+  if (myClaimedSlot < 0) return;
+  if (state.claims) delete state.claims[myClaimedSlot];
+  myClaimedSlot = -1;
+  dbSet('settings', { k: 'claim:' + roomCode, v: -1 });
+  pushState();
+  renderAll();
+}
+
+window.openClaimPicker = openClaimPicker;
+window.claimSlot = claimSlot;
+window.releaseClaim = releaseClaim;
 
 function enterAsAdmin() {
   log('Entering as admin');
