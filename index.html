@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.072 -->
+<!-- TI4 Tracker 2.073 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -285,7 +285,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.072';
+var VERSION = '2.073';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -3243,6 +3243,10 @@ function doStartGame() {
   state.otherScored = [];
   setNav('score');
   pushState();
+  // Prompt admin to claim a slot (or pick Admin Only)
+  if (isAdmin && myUsername) {
+    setTimeout(openClaimPicker, 300);
+  }
 }
 
 function vp(i, delta) {
@@ -3999,16 +4003,17 @@ function enterGame(code) {
   startMessagePolling();
   // Restore claimed slot from local storage if we previously claimed in this room
   dbGet('settings', 'claim:' + roomCode).then(function(rec) {
-    if (rec && typeof rec.v === 'number') {
+    if (rec && typeof rec.v === 'number' && rec.v >= 0) {
       myClaimedSlot = rec.v;
-      // Verify slot still has my username (might have been kicked)
       var c = state.claims || {};
       if (c[myClaimedSlot] !== myUsername) {
         myClaimedSlot = -1;
       }
+    } else {
+      myClaimedSlot = -1;
     }
     setNav(isAdmin && !state.started ? 'setup' : 'score');
-    // After game has started, prompt to claim a slot if not yet claimed and have username
+    // After game has started, prompt to claim a slot if not yet claimed
     if (state.started && !state.ended && myClaimedSlot < 0 && myUsername) {
       setTimeout(openClaimPicker, 500);
     }
@@ -4016,7 +4021,10 @@ function enterGame(code) {
 }
 
 function openClaimPicker() {
-  if (!myUsername) return;  // need username to claim
+  if (!myUsername) {
+    alert('Please set your username in Settings first.');
+    return;
+  }
   if (!state.players || !state.players.length) return;
   
   var claims = state.claims || {};
@@ -4036,8 +4044,12 @@ function openClaimPicker() {
     h += '</button>';
   });
   h += '</div>';
-  // Skip / Cancel
-  h += '<button class="btn btn-full mt-16" onclick="closeModal()" style="border:none;background:none;color:var(--text-dim)">Spectate only (skip)</button>';
+  // Admin-only device option (only show to admin)
+  if (isAdmin) {
+    h += '<button class="btn btn-full mt-16" onclick="claimAdminOnly()" style="border-color:var(--gold);color:var(--gold)">🛠 Admin Only Device</button>';
+    h += '<div class="small dim center" style="margin-top:4px;font-style:italic">Admin tracking only — no messaging</div>';
+  }
+  // No skip button — claim is required
   
   var modal = document.getElementById('modal');
   modal.classList.add('modal-center');
@@ -4045,6 +4057,19 @@ function openClaimPicker() {
   modal.classList.add('open');
   document.getElementById('modal-overlay').classList.add('open');
 }
+
+function claimAdminOnly() {
+  // Admin opts out of player slot - no messaging
+  if (myClaimedSlot >= 0 && state.claims) {
+    delete state.claims[myClaimedSlot];
+  }
+  myClaimedSlot = -1;
+  dbSet('settings', { k: 'claim:' + roomCode, v: -1 });
+  pushState();
+  closeModal();
+  renderAll();
+}
+window.claimAdminOnly = claimAdminOnly;
 
 function claimSlot(slotIdx) {
   if (!myUsername) return;
