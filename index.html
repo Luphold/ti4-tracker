@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.073 -->
+<!-- TI4 Tracker 2.076 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -285,7 +285,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.073';
+var VERSION = '2.076';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1470,8 +1470,22 @@ function renderAll() {
   }
   var msgBtn = document.getElementById('btn-msgs');
   if (msgBtn) {
-    // Show messages button if game started and I've claimed a slot
-    msgBtn.style.display = (myClaimedSlot >= 0 && roomCode && state.started) ? '' : 'none';
+    var inGame = roomCode && state.started && !state.ended;
+    if (inGame && myClaimedSlot >= 0) {
+      // Show messages button
+      msgBtn.style.display = '';
+      msgBtn.innerHTML = '💬<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--red);color:white;font-weight:700;font-size:9px;min-width:16px;height:16px;border-radius:8px;padding:0 4px;line-height:16px"></span>';
+      msgBtn.onclick = openMessages;
+      msgBtn.title = 'Messages';
+    } else if (inGame && myUsername) {
+      // Show claim button (no slot yet)
+      msgBtn.style.display = '';
+      msgBtn.innerHTML = '👤';
+      msgBtn.onclick = openClaimPicker;
+      msgBtn.title = 'Claim a player';
+    } else {
+      msgBtn.style.display = 'none';
+    }
   }
   // Show pause overlay if paused
   var overlay = document.getElementById('pause-overlay');
@@ -3578,18 +3592,19 @@ function unlogEvent(type, playerIdx, name) {
 // =========== MESSAGING ===========
 
 function openMessages() {
+  log('openMessages: roomCode=' + roomCode + ' supabase=' + !!supabase + ' myClaimedSlot=' + myClaimedSlot + ' myUsername=' + myUsername);
   if (!roomCode || !supabase) {
     alert('Not connected to a game.');
     return;
   }
   if (myClaimedSlot < 0) {
-    // Prompt to claim first
     if (confirm('You need to claim a player slot to send/receive messages. Open claim picker?')) {
       openClaimPicker();
     }
     return;
   }
   var myPlayerName = state.players[myClaimedSlot] && state.players[myClaimedSlot].name;
+  log('openMessages: myPlayerName=' + myPlayerName);
   if (!myPlayerName) {
     alert('Your claimed slot is no longer valid. Re-claim a slot.');
     myClaimedSlot = -1;
@@ -3597,6 +3612,7 @@ function openMessages() {
   }
   
   fetchMessages().then(function(msgs) {
+    log('openMessages: fetched ' + msgs.length + ' messages, rendering modal');
     var byPartner = {};
     msgs.forEach(function(m) {
       var partner = (m.sender === myPlayerName) ? m.recipient : m.sender;
@@ -3644,7 +3660,8 @@ function openMessages() {
     modal.classList.add('open');
     document.getElementById('modal-overlay').classList.add('open');
   }).catch(function(e) {
-    alert('Could not load messages: ' + e.message);
+    log('openMessages ERROR: ' + (e && e.message ? e.message : e));
+    alert('Could not load messages: ' + (e && e.message ? e.message : e));
   });
 }
 
@@ -3795,6 +3812,22 @@ function updateMessageBadge() {
       }
     }
   }).catch(function() {});
+}
+
+function fetchMessages() {
+  if (!supabase || !roomCode) return Promise.resolve([]);
+  return supabase.from('ti4_chat')
+    .select('*')
+    .eq('room_code', roomCode)
+    .order('sent_at', { ascending: true })
+    .then(function(r) {
+      if (r.error) throw new Error(r.error.message);
+      return r.data || [];
+    });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function startMessagePolling() {
