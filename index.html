@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.095 -->
+<!-- TI4 Tracker 2.097 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.095';
+var VERSION = '2.097';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1095,7 +1095,12 @@ const FACTION_DATA = {
     }
   },
   "The Empyrean": {
-    home:"Empyrean (Wormhole system)", commodities:4, source:"pok", difficulty:"High",
+    home:"Empyrean (Wormhole system)", commodities:4, source:"pok", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Destroyer, 2 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Dark Energy Tap",
+      planets:"The Dark (3/4), Nebula"
+    },
     abilities:[
       "VOIDBORN: Nebulae do not affect your ships' movement.",
       "AETHERPASSAGE: After a player activates a system, you may allow that player to move their ships through systems that contain your ships.",
@@ -1117,6 +1122,11 @@ const FACTION_DATA = {
   },
   "The Mahact Gene-Sorcerers": {
     home:"Ixth", commodities:3, source:"pok", difficulty:"High",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Cruiser, 2 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"Predictive Intelligence, Bio-Stims",
+      planets:"Ixth (3/5)"
+    },
     abilities:[
       "EDICT: When you win a combat, place 1 command token from your opponent's reinforcements in your fleet pool if it does not already contain 1 of that player's tokens; other player's tokens in your fleet pool increase your fleet limit but cannot be redistributed.",
       "IMPERIA: While another player's command token is in your fleet pool, you can use the ability of that player's commander, if it is unlocked.",
@@ -1140,6 +1150,11 @@ const FACTION_DATA = {
   },
   "The Naaz-Rokha Alliance": {
     home:"Naazir / Rokha", commodities:3, source:"pok", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Destroyer, 2 Fighters, 1 Mech, 3 Infantry, 1 Space Dock",
+      tech:"AI Development Algorithm, Psychoarchaeology",
+      planets:"Naazir (2/1), Rokha (1/2)"
+    },
     abilities:[
       "DISTANT SUNS: When you explore a planet that contains 1 of your mechs, you may draw 1 additional card; choose 1 to resolve and discard the rest.",
       "FABRICATION: ACTION: Either purge 2 of your relic fragments of the same type to gain 1 relic; or purge 1 of your relic fragments to gain 1 command token."
@@ -1163,6 +1178,11 @@ const FACTION_DATA = {
   },
   "The Nomad": {
     home:"Arcturus", commodities:4, source:"pok", difficulty:"Low",
+    start:{
+      units:"1 Flagship, 1 Carrier, 1 Destroyer, 3 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Sling Relay",
+      planets:"Arcturus (4/4)"
+    },
     abilities:[
       "THE COMPANY: During setup, take the 2 additional Nomad faction agents; you have 3 agents.",
       "FUTURE SIGHT: During the agenda phase, after an outcome that you voted for or predicted is resolved, gain 1 trade good."
@@ -1188,7 +1208,12 @@ const FACTION_DATA = {
     }
   },
   "The Titans of Ul": {
-    home:"Elysium / Ul", commodities:2, source:"pok", difficulty:"High",
+    home:"Elysium / Ul", commodities:2, source:"pok", difficulty:"Moderate",
+    start:{
+      units:"1 Dreadnought, 2 Cruisers, 2 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"Scanlink Drone Network, Antimass Deflectors",
+      planets:"Elysium (4/1)"
+    },
     abilities:[
       "AWAKEN: After you activate a system that contains 1 or more of your sleeper tokens, you may replace each of those tokens with 1 PDS from your reinforcements.",
       "TERRAGENESIS: After you explore a planet that does not have a sleeper token, you may place or move 1 sleeper token onto that planet.",
@@ -1211,7 +1236,12 @@ const FACTION_DATA = {
     }
   },
   "The Vuil'raith Cabal": {
-    home:"Kraag / Valk", commodities:3, source:"pok", difficulty:"High",
+    home:"Kraag / Valk", commodities:2, source:"pok", difficulty:"High",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Cruiser, 3 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"Self Assembly Routines",
+      planets:"Acheron (4/0)"
+    },
     abilities:[
       "DEVOUR: Capture your opponent's non-structure units that are destroyed during combat.",
       "RIFTMELD: When you research a unit upgrade technology, you may return 1 captured unit of that type to ignore all of the technology's prerequisites.",
@@ -1234,7 +1264,12 @@ const FACTION_DATA = {
     }
   },
   "The Council Keleres": {
-    home:"Chosen (Mentak / Xxcha / Argent Flight)", commodities:4, source:"codex", difficulty:"Medium",
+    home:"Chosen (Mentak / Xxcha / Argent Flight)", commodities:2, source:"codex", difficulty:"Moderate",
+    start:{
+      units:"2 Carriers, 1 Cruiser, 2 Fighters, 2 Infantry, 1 Space Dock",
+      tech:"Choose 2 non-faction technologies owned by other players",
+      planets:"Moll Primus (4/1) OR Archon Ren (2/3) + Archon Tau (1/1) OR Valk (2/0) + Avar (1/1) + Ylir (0/2)"
+    },
     abilities:[
       "THE TRIBUNII: During setup, choose a Keleres hero that corresponds to an unused faction; take that faction's home system, command tokens and control tokens. The unchosen Keleres heroes are not used.",
       "COUNCIL PATRONAGE: Replenish your commodities at the start of the strategy phase, then gain 1 trade good.",
@@ -1259,7 +1294,12 @@ const FACTION_DATA = {
     }
   },
   "Last Bastion": {
-    home:"Bastion / Ordinian", commodities:3, source:"te", difficulty:"Low",
+    home:"Bastion / Ordinian", commodities:1, source:"te", difficulty:"Low",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Cruiser, 2 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"Choose 1 blue or yellow technology with no prerequisites",
+      planets:"Ordinian (0/0), Revelation (1/2), Nebula"
+    },
     abilities:[
       "LIBERATE: When you gain control of a planet, ready that planet if it contains a number of your infantry equal to or greater than that planet's resource value; otherwise, place 1 infantry on that planet.",
       "GALVANIZE: When a game effect instructs a player to galvanize a unit, they place a galvanize token beneath it, if it does not have one. Galvanized units roll 1 additional die for combat rolls and unit abilities.",
@@ -1282,7 +1322,12 @@ const FACTION_DATA = {
     }
   },
   "The Ral Nel Consortium": {
-    home:"Ral Nel", commodities:5, source:"te", difficulty:"Low",
+    home:"Ral Nel", commodities:4, source:"te", difficulty:"Low",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Destroyer, 2 Fighters, 4 Infantry, 1 Space Dock, 2 PDS",
+      tech:"Choose 1 red or green technology with no prerequisites",
+      planets:"Mez Lo Orz Pei Zsha (2/1), Rep Lo Orz Oet (1/3)"
+    },
     abilities:[
       "SURVIVAL INSTINCT: After a player activates a system that contains your ships, you may move up to 2 of your ships into the active system from adjacent systems that do not contain your command tokens.",
       "MINIATURIZATION: Your structures can be transported by any ships; this does not require or count against capacity. While your structures are in the space area, they cannot use their unit abilities. At the end of your tactical action, you may place your structures that are in space areas onto planets you control in their respective systems."
@@ -1304,7 +1349,12 @@ const FACTION_DATA = {
     }
   },
   "The Deepwrought Scholarate": {
-    home:"Deepwrought", commodities:4, source:"te", difficulty:"Medium",
+    home:"Deepwrought", commodities:3, source:"te", difficulty:"Moderate",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 4 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"During setup, research technology twice",
+      planets:"Ikatena (4/4)"
+    },
     abilities:[
       "RESEARCH TEAM: When ground forces are committed, if your units on the planet are not already coexisting, you may choose for your units to coexist.",
       "OCEANBOUND: When your units begin coexisting on a planet, gain an ocean card and ready it. Any time you have more ocean cards than there are planets that have your coexisting units, discard ocean cards until you do not."
@@ -1324,7 +1374,12 @@ const FACTION_DATA = {
     }
   },
   "The Crimson Rebellion": {
-    home:"Crimson Gate", commodities:3, source:"te", difficulty:"High",
+    home:"Crimson Gate", commodities:2, source:"te", difficulty:"High",
+    start:{
+      units:"1 Carrier, 2 Destroyers, 3 Fighters, 4 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Choose one red or blue with no prerequisites",
+      planets:"Ahk Creuxx (4/2), Epsilon Wormhole"
+    },
     abilities:[
       "SUNDERED: You cannot use wormholes other than epsilon wormholes. Other players' units that move or are placed into your home system are destroyed.",
       "INCURSION: When you activate a system that contains a breach, you may flip that breach; systems that contain active breaches are adjacent. At the end of the status phase, any player with ships in a system that contain an active breach may remove that breach.",
@@ -1347,7 +1402,12 @@ const FACTION_DATA = {
     }
   },
   "The Firmament": {
-    home:"Firmament (shared with The Obsidian)", commodities:4, source:"te", difficulty:"Very High",
+    home:"Firmament (shared with The Obsidian)", commodities:3, source:"te", difficulty:"High",
+    start:{
+      units:"1 Carrier, 1 Cruiser, 1 Destroyer, 3 Fighters, 3 Infantry, 1 Space Dock",
+      tech:"Choose one green or yellow technology that has no prerequisites",
+      planets:"Cronos (2/1), Tallin (1/2)"
+    },
     abilities:[
       "PLOTS WITHIN PLOTS: You can score secret objectives already scored by other players, if you fulfill their requirements; this does not count against your secret objective limit or the number you can score in a round. When you score another player's secret objective do not score a victory point. Instead, place a face down plot card into your play area with that player's control token on it.",
       "PUPPETS OF THE BLADE: If you have at least one plot card in your play area, gain the following ability: ACTION: Purge the Firmament's faction sheet, leaders, planet card, and promissory note, then gain all of the faction components for The Obsidian."
@@ -1367,7 +1427,12 @@ const FACTION_DATA = {
     }
   },
   "The Obsidian": {
-    home:"Firmament (shared with The Firmament)", commodities:4, source:"te", difficulty:"Very High",
+    home:"Firmament (shared with The Firmament)", commodities:3, source:"te", difficulty:"High",
+    start:{
+      units:"None",
+      tech:"None",
+      planets:"Cronos Hollow (3/0), Tallin Hollow (3/0)"
+    },
     abilities:[
       "NOCTURNE: This faction cannot be chosen during setup.",
       "THE BLADE'S ORCHESTRA: When this faction comes into play, flip your home system, double sided faction components and all of your in-play plot cards. Then, ready Cronos Hollow and Tallin Hollow if you control them.",
