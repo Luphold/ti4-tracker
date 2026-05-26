@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.094 -->
+<!-- TI4 Tracker 2.095 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.094';
+var VERSION = '2.095';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -967,7 +967,12 @@ const FACTION_DATA = {
     }
   },
   "The Winnu": {
-    home:"Winnu", commodities:3, source:"base", difficulty:"High",
+    home:"Winnu", commodities:3, source:"base", difficulty:"Moderate",
+    start:{
+      units:"1 Carrier, 1 Cruiser, 2 Fighters, 2 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Choose any 1 technology that has no prerequisites",
+      planets:"Winnu (3/4)"
+    },
     abilities:[
       "RECLAMATION: After you gain control of Mecatol Rex, you may place 1 PDS and 1 space dock from your reinforcements on Mecatol Rex.",
       "BLOOD TIES: You do not have to spend influence to remove the Custodians token from Mecatol Rex."
@@ -988,6 +993,11 @@ const FACTION_DATA = {
   },
   "The Xxcha Kingdom": {
     home:"Xxcha / Archon Ren / Archon Tau", commodities:4, source:"base", difficulty:"Low",
+    start:{
+      units:"1 Carrier, 2 Cruisers, 3 Fighters, 4 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Graviton Laser System",
+      planets:"Archon Ren (2/3), Archon Tau (1/1)"
+    },
     abilities:[
       "QUASH: After an agenda is revealed, you may spend 1 token from your strategy pool to discard that agenda and reveal the next.",
       "PEACE ACCORDS: After you resolve the primary or secondary ability of the Diplomacy strategy card, you may gain control of 1 planet other than Mecatol Rex that does not contain any units and is in a system adjacent to your ships."
@@ -1008,6 +1018,11 @@ const FACTION_DATA = {
   },
   "The Yin Brotherhood": {
     home:"Darien", commodities:2, source:"base", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Destroyer, 4 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Sarween Tools",
+      planets:"Darien (4/4)"
+    },
     abilities:[
       "INDOCTRINATION: After any player's unit is destroyed in ground combat on a planet you control, you may spend 2 trade goods to replace that unit with 1 infantry from your reinforcements.",
       "DEVOTION: At the end of the status phase, choose 1 other player and destroy 1 of your ships in a system that contains that player's ships."
@@ -1028,6 +1043,11 @@ const FACTION_DATA = {
   },
   "The Yssaril Tribes": {
     home:"Yssaril / Retillion / Shalloq", commodities:3, source:"base", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Cruiser, 2 Fighters, 5 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Neural Motivator",
+      planets:"Retillion (2/3), Shalloq (1/2)"
+    },
     abilities:[
       "STALL TACTICS: ACTION: Exhaust this card to draw 1 action card.",
       "CRAFTY: You may have any number of action cards in your hand.",
@@ -1049,6 +1069,11 @@ const FACTION_DATA = {
   },
   "The Argent Flight": {
     home:"Rin / Arcturus", commodities:3, source:"pok", difficulty:"Low",
+    start:{
+      units:"1 Carrier, 2 Destroyers, 2 Fighters, 5 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Choose two of the following: Neural Motivator, Sarween Tools, Plasma Scoring",
+      planets:"Valk (2/0), Avar (1/1), Ylir (0/2)"
+    },
     abilities:[
       "ZEAL: You always vote first during the agenda phase. When you cast at least 1 vote, cast 1 additional vote for each player in the game including you.",
       "RAID FORMATION: When 1 or more of your units uses ANTI-FIGHTER BARRAGE, for each hit produced in excess of your opponent's Fighters, choose 1 of your opponent's ships that has SUSTAIN DAMAGE to become damaged."
@@ -2752,12 +2777,17 @@ function renderFactionHeader(name, d) {
   // Color the starting tech based on its tech type
   var techHtml = '—';
   if (s.tech && s.tech.toLowerCase() !== 'none') {
-    var techNames = String(s.tech).split(/\s*,\s*/);
-    techHtml = techNames.map(function(tn) {
-      var t = TECHNOLOGIES.find(function(x) { return x.name === tn; });
-      var c = t ? getTechTypeColor(t.type) : 'var(--text)';
-      return '<span style="color:' + c + ';font-weight:700">' + tn + '</span>';
-    }).join(', ');
+    // Detect "Choose X" prompts (no real tech names to color)
+    if (/^choose\b/i.test(s.tech)) {
+      techHtml = '<span style="color:var(--text-dim);font-style:italic;font-weight:500">' + s.tech + '</span>';
+    } else {
+      var techNames = String(s.tech).split(/\s*,\s*/);
+      techHtml = techNames.map(function(tn) {
+        var t = TECHNOLOGIES.find(function(x) { return x.name === tn; });
+        var c = t ? getTechTypeColor(t.type) : 'var(--text)';
+        return '<span style="color:' + c + ';font-weight:700">' + tn + '</span>';
+      }).join(', ');
+    }
   } else if (s.tech && s.tech.toLowerCase() === 'none') {
     techHtml = '<span style="color:var(--text-dim);font-style:italic">None</span>';
   }
