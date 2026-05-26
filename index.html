@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.092 -->
+<!-- TI4 Tracker 2.094 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.092';
+var VERSION = '2.094';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -732,6 +732,11 @@ const FACTION_DATA = {
   },
   "The Emirates of Hacan": {
     home:"Arretze / Kamdorn / Hercant", commodities:6, source:"base", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Cruiser, 2 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Sarween Tools, Antimass Deflectors",
+      planets:"Arretze (2/0), Hercant (1/1), Kamdorn (0/1)"
+    },
     abilities:[
       "MASTERS OF TRADE: You do not have to spend a command token to resolve the secondary ability of the Trade strategy card.",
       "GUILD SHIPS: You can negotiate transactions with players who are not your neighbor.",
@@ -753,6 +758,11 @@ const FACTION_DATA = {
   },
   "The Federation of Sol": {
     home:"Jord / Arcturus", commodities:4, source:"base", difficulty:"Low",
+    start:{
+      units:"2 Carriers, 1 Destroyer, 3 Fighters, 5 Infantry, 1 Space Dock",
+      tech:"Neural Motivator, Antimass Deflectors",
+      planets:"Jord (4/2)"
+    },
     abilities:[
       "ORBITAL DROP: ACTION: Spend 1 token from your strategy pool to place 2 infantry from your reinforcements on 1 planet you control.",
       "VERSATILE: When you gain command tokens during the status phase, gain 1 additional command token."
@@ -774,7 +784,12 @@ const FACTION_DATA = {
     }
   },
   "The Ghosts of Creuss": {
-    home:"Creuss (Wormhole system)", commodities:4, source:"base", difficulty:"High",
+    home:"Creuss (Wormhole system)", commodities:4, source:"base", difficulty:"Moderate",
+    start:{
+      units:"1 Carrier, 2 Destroyers, 2 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Gravity Drive",
+      planets:"Creuss (4/2), Delta wormhole"
+    },
     abilities:[
       "QUANTUM ENTANGLEMENT: You treat all systems that contain either an alpha or beta wormhole as adjacent to each other. Game effects cannot prevent you from using this ability.",
       "SLIPSTREAM: During your tactical actions, apply +1 to the move value of each of your ships that starts its movement in your home system or in a system that contains either an alpha or beta wormhole.",
@@ -795,7 +810,12 @@ const FACTION_DATA = {
     }
   },
   "The L1Z1X Mindnet": {
-    home:"[0.0.0] / Darien", commodities:3, source:"base", difficulty:"Low",
+    home:"[0.0.0] / Darien", commodities:2, source:"base", difficulty:"Low",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 3 Fighters, 5 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Neural Motivator, Plasma Scoring",
+      planets:"[0.0.0] (5/0)"
+    },
     abilities:[
       "ASSIMILATE: When you gain control of a planet, replace each PDS and space dock on that planet with a matching unit from your reinforcements.",
       "HARROW: At the end of each round of ground combat, your ships in the active system may use their BOMBARDMENT abilities against your opponent's ground forces on the planet."
@@ -817,7 +837,12 @@ const FACTION_DATA = {
     }
   },
   "The Mentak Coalition": {
-    home:"Moll Primus / Quinarra / Sakkara", commodities:2, source:"base", difficulty:"Medium",
+    home:"Moll Primus / Quinarra / Sakkara", commodities:2, source:"base", difficulty:"High",
+    start:{
+      units:"1 Carrier, 2 Cruisers, 3 Fighters, 4 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Sarween Tools, Plasma Scoring",
+      planets:"Moll Primus (4/1)"
+    },
     abilities:[
       "AMBUSH: At the start of a space combat, you may roll 1 die for each of up to 2 of your cruisers or destroyers in the system. For each result equal to or greater than that ship's combat value, produce 1 hit; your opponent must assign it to 1 of their ships.",
       "PILLAGE: After 1 of your neighbors gains trade goods or resolves a transaction, if they have 3 or more trade goods, you may take 1 of their trade goods or commodities."
@@ -837,7 +862,12 @@ const FACTION_DATA = {
     }
   },
   "The Naalu Collective": {
-    home:"Nar / Naalu Wormhole", commodities:3, source:"base", difficulty:"Medium",
+    home:"Nar / Naalu Wormhole", commodities:3, source:"base", difficulty:"Moderate",
+    start:{
+      units:"1 Carrier, 1 Cruiser, 1 Destroyer, 3 Fighters, 4 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Neural Motivator, Sarween Tools",
+      planets:"Maaluuk (0/2), Druaa (3/1)"
+    },
     abilities:[
       "TELEPATHIC: At the end of the strategy phase, place the Naalu '0' token on your strategy card; you are first in initiative order.",
       "FORESIGHT: After another player moves ships into a system containing 1 or more of your ships, you may place 1 token from your strategy pool in an adjacent system without other players' ships; move your ships from the active system into that system."
@@ -860,6 +890,11 @@ const FACTION_DATA = {
   },
   "The Nekro Virus": {
     home:"Mordai II", commodities:3, source:"base", difficulty:"High",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Cruiser, 2 Fighters, 2 Infantry, 1 Space Dock",
+      tech:"Dacxive Animators, Valefar Assimilator X, Valefar Assimilator Y",
+      planets:"Mordai II (4/0)"
+    },
     abilities:[
       "GALACTIC THREAT: You cannot vote on agendas. Once per agenda phase, after an agenda is revealed, you may predict aloud the outcome. If correct, gain 1 technology owned by a player who voted how you predicted.",
       "TECHNOLOGICAL SINGULARITY: Once per combat, after 1 of your opponent's units is destroyed, you may gain 1 technology owned by that player.",
@@ -880,7 +915,12 @@ const FACTION_DATA = {
     }
   },
   "Sardakk N'orr": {
-    home:"Quinarra / Tren'lak", commodities:3, source:"base", difficulty:"High",
+    home:"Quinarra / Tren'lak", commodities:3, source:"base", difficulty:"Moderate",
+    start:{
+      units:"2 Carriers, 1 Cruiser, 5 Infantry, 1 Space Dock, 1 PDS",
+      tech:"None",
+      planets:"Tren'lak (1/0), Quinarra (3/1)"
+    },
     abilities:[
       "UNRELENTING: Apply +1 to the result of each of your units' combat rolls."
     ],
@@ -902,6 +942,11 @@ const FACTION_DATA = {
   },
   "The Universities of Jol-Nar": {
     home:"Jol / Nar", commodities:4, source:"base", difficulty:"Low",
+    start:{
+      units:"1 Dreadnought, 2 Carriers, 1 Fighter, 2 Infantry, 1 Space Dock, 2 PDS",
+      tech:"Plasma Scoring, Sarween Tools, Antimass Deflectors, Neural Motivator",
+      planets:"Jol (1/2), Nar (2/3)"
+    },
     abilities:[
       "FRAGILE: Apply -1 to the result of each of your units' combat rolls.",
       "BRILLIANT: When you spend a command token to resolve the secondary ability of the Technology strategy card, you may resolve the primary ability instead.",
@@ -2706,13 +2751,15 @@ function renderFactionHeader(name, d) {
   
   // Color the starting tech based on its tech type
   var techHtml = '—';
-  if (s.tech) {
+  if (s.tech && s.tech.toLowerCase() !== 'none') {
     var techNames = String(s.tech).split(/\s*,\s*/);
     techHtml = techNames.map(function(tn) {
       var t = TECHNOLOGIES.find(function(x) { return x.name === tn; });
       var c = t ? getTechTypeColor(t.type) : 'var(--text)';
       return '<span style="color:' + c + ';font-weight:700">' + tn + '</span>';
     }).join(', ');
+  } else if (s.tech && s.tech.toLowerCase() === 'none') {
+    techHtml = '<span style="color:var(--text-dim);font-style:italic">None</span>';
   }
   
   var h = '<div style="display:flex;gap:10px;align-items:stretch;margin-bottom:12px;padding:12px;background:rgba(36,50,84,0.3);border:1px solid var(--gold);border-radius:8px">';
