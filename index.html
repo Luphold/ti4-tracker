@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.088 -->
+<!-- TI4 Tracker 2.089 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.088';
+var VERSION = '2.089';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -627,6 +627,11 @@ const TECH_PREREQS = {
 const FACTION_DATA = {
   "The Arborec": {
     home:"Nestphar", commodities:3, source:"base", difficulty:"High",
+    start:{
+      units:"1 Carrier, 1 Cruiser, 2 Fighters, 4 Infantry, 1 Space Dock, 1 PDS",
+      tech:"Magen Defense Grid",
+      planets:"Nestphar (3/2)"
+    },
     abilities:[
       "MITOSIS: Your space docks cannot produce infantry. At the start of the status phase, place 1 infantry from your reinforcements on any planet you control."
     ],
@@ -2668,10 +2673,113 @@ function renderHistory() {
 // =============================================================================
 // Faction modal
 // =============================================================================
+function difficultyColor(d) {
+  if (!d) return 'var(--text)';
+  var s = String(d).toLowerCase();
+  if (s.indexOf('very high') >= 0) return '#e74c3c'; // red
+  if (s.indexOf('high') >= 0) return '#e67e22';      // orange
+  if (s.indexOf('medium') >= 0) return '#f1c40f';    // yellow
+  if (s.indexOf('low') >= 0) return '#7cd957';       // light green
+  if (s.indexOf('easy') >= 0) return '#27ae60';      // green
+  return 'var(--text)';
+}
+
+function setFactionHeaderStyle(n, name) {
+  window._factionHeaderStyle = n;
+  showFaction(name);
+}
+window.setFactionHeaderStyle = setFactionHeaderStyle;
+
+function renderFactionHeader(name, d, variant) {
+  var diffColor = difficultyColor(d.difficulty);
+  var s = d.start || {};
+  
+  if (variant === 1) {
+    // STYLE 1: Centered title with stat cards in a row below
+    var h = '<div style="text-align:center;padding:14px 8px 12px 8px;background:linear-gradient(180deg,rgba(212,172,13,0.12) 0%,rgba(36,50,84,0) 100%);border:1px solid var(--gold);border-radius:8px;margin-bottom:12px">';
+    h += '<div class="gold" style="font-size:22px;font-weight:700;letter-spacing:.08em;text-shadow:0 0 10px rgba(212,172,13,0.5)">' + name + '</div>';
+    h += '<div style="font-size:10px;letter-spacing:.2em;color:var(--text-dim);margin-top:4px;text-transform:uppercase">Difficulty <span style="color:' + diffColor + ';font-weight:700">' + (d.difficulty || '—') + '</span> · Commodities <span style="color:var(--gold);font-weight:700">' + (d.commodities || '—') + '</span></div>';
+    h += '<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center">';
+    h += '<div style="flex:1;min-width:120px;background:rgba(36,50,84,0.4);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:left"><div style="font-size:9px;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase">Home</div><div style="font-size:12px;font-weight:600;color:var(--text)">' + (s.planets || '—') + '</div></div>';
+    h += '<div style="flex:1;min-width:120px;background:rgba(36,50,84,0.4);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:left"><div style="font-size:9px;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase">Start Tech</div><div style="font-size:12px;font-weight:600;color:var(--text)">' + (s.tech || '—') + '</div></div>';
+    h += '</div>';
+    h += '<div style="background:rgba(36,50,84,0.4);border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:left;margin-top:6px"><div style="font-size:9px;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase">Starting Units</div><div style="font-size:12px;font-weight:600;color:var(--text)">' + (s.units || '—') + '</div></div>';
+    h += '</div>';
+    return h;
+  }
+  
+  if (variant === 2) {
+    // STYLE 2: Big name on left, vertical stat strip on right
+    var h = '<div style="display:flex;gap:10px;align-items:stretch;margin-bottom:12px;padding:12px;background:rgba(36,50,84,0.3);border:1px solid var(--gold);border-radius:8px">';
+    h += '<div style="flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;text-align:left">';
+    h += '<div class="gold" style="font-size:20px;font-weight:700;line-height:1.1">' + name + '</div>';
+    h += '<div style="margin-top:6px"><span style="font-size:10px;letter-spacing:.1em;color:var(--text-dim);text-transform:uppercase">Difficulty</span> <span style="color:' + diffColor + ';font-weight:700;font-size:12px">' + (d.difficulty || '—') + '</span></div>';
+    h += '<div style="margin-top:2px"><span style="font-size:10px;letter-spacing:.1em;color:var(--text-dim);text-transform:uppercase">Commodities</span> <span style="color:var(--gold);font-weight:700;font-size:12px">' + (d.commodities || '—') + '</span></div>';
+    h += '</div>';
+    h += '<div style="flex:1;display:flex;flex-direction:column;gap:4px;font-size:11px;border-left:1px solid var(--border);padding-left:10px">';
+    h += '<div><span style="color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;font-size:9px">Start Planet</span><br><span style="font-weight:600">' + (s.planets || '—') + '</span></div>';
+    h += '<div><span style="color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;font-size:9px">Start Tech</span><br><span style="font-weight:600">' + (s.tech || '—') + '</span></div>';
+    h += '<div><span style="color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;font-size:9px">Start Units</span><br><span style="font-weight:600">' + (s.units || '—') + '</span></div>';
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+  
+  if (variant === 3) {
+    // STYLE 3: Banner-style with diagonal accent, name centered as a banner, stats listed below in a clean grid
+    var h = '<div style="margin-bottom:12px;background:linear-gradient(135deg,rgba(212,172,13,0.18) 0%,rgba(36,50,84,0.2) 50%,rgba(212,172,13,0.18) 100%);border-top:2px solid var(--gold);border-bottom:2px solid var(--gold);padding:14px 12px;text-align:center;position:relative">';
+    h += '<div class="gold" style="font-size:24px;font-weight:700;letter-spacing:.12em;text-shadow:0 0 8px rgba(212,172,13,0.4)">' + name + '</div>';
+    h += '<div style="margin-top:6px"><span style="color:' + diffColor + ';font-weight:700;font-size:11px;letter-spacing:.15em;text-transform:uppercase">⚙ ' + (d.difficulty || '—') + '</span> <span style="color:var(--text-dim);margin:0 6px">•</span> <span style="color:var(--gold);font-weight:700;font-size:11px;letter-spacing:.15em;text-transform:uppercase">⬢ ' + (d.commodities || '—') + ' Commodities</span></div>';
+    h += '</div>';
+    h += '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;margin-bottom:12px;padding:0 4px">';
+    h += '<div style="color:var(--text-dim);font-size:10px;letter-spacing:.15em;text-transform:uppercase;text-align:right;align-self:center">Home</div><div style="font-weight:600">' + (s.planets || '—') + '</div>';
+    h += '<div style="color:var(--text-dim);font-size:10px;letter-spacing:.15em;text-transform:uppercase;text-align:right;align-self:center">Tech</div><div style="font-weight:600">' + (s.tech || '—') + '</div>';
+    h += '<div style="color:var(--text-dim);font-size:10px;letter-spacing:.15em;text-transform:uppercase;text-align:right;align-self:start">Units</div><div style="font-weight:600;line-height:1.4">' + (s.units || '—') + '</div>';
+    h += '</div>';
+    return h;
+  }
+  
+  // STYLE 4: Compact pill-row, dense info card
+  var h = '<div style="margin-bottom:12px;background:rgba(36,50,84,0.4);border:1px solid var(--gold);border-radius:10px;padding:10px 12px">';
+  h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+  h += '<div class="gold" style="font-size:18px;font-weight:700;flex:1;min-width:160px">' + name + '</div>';
+  h += '<div style="display:flex;gap:4px;align-items:center">';
+  h += '<div style="background:' + diffColor + ';color:#0a1525;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:10px">' + (d.difficulty || '—') + '</div>';
+  h += '<div style="background:rgba(212,172,13,0.2);color:var(--gold);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:10px;border:1px solid var(--gold)">⬢ ' + (d.commodities || '—') + '</div>';
+  h += '</div>';
+  h += '</div>';
+  h += '<div style="display:flex;flex-direction:column;gap:3px;font-size:11px">';
+  h += '<div><span style="color:var(--text-dim);font-size:9px;letter-spacing:.15em;text-transform:uppercase;display:inline-block;width:60px">Home</span> <span style="font-weight:600">' + (s.planets || '—') + '</span></div>';
+  h += '<div><span style="color:var(--text-dim);font-size:9px;letter-spacing:.15em;text-transform:uppercase;display:inline-block;width:60px">Tech</span> <span style="font-weight:600">' + (s.tech || '—') + '</span></div>';
+  h += '<div style="display:flex;gap:4px"><span style="color:var(--text-dim);font-size:9px;letter-spacing:.15em;text-transform:uppercase;display:inline-block;width:60px;flex-shrink:0;padding-top:1px">Units</span> <span style="font-weight:600;flex:1">' + (s.units || '—') + '</span></div>';
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
 function showFaction(name) {
   var d = FACTION_DATA[name];
   if (!d) return;
-  var h = '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">' + name + '</div></div>';
+  // For now, only Arborec has full starting data — others fall back to simple header
+  var hasFullData = d.start && d.start.units;
+  
+  // Read style preference (default to 1)
+  var styleVariant = window._factionHeaderStyle || 1;
+  
+  var h = '';
+  if (hasFullData) {
+    h += renderFactionHeader(name, d, styleVariant);
+    // Style switcher (TEMP - just for picking the look)
+    h += '<div style="display:flex;gap:4px;justify-content:center;margin:8px 0 12px 0;font-size:10px">';
+    for (var sv = 1; sv <= 4; sv++) {
+      var active = (sv === styleVariant);
+      h += '<button onclick="setFactionHeaderStyle(' + sv + ',\'' + name + '\')" style="background:' + (active ? 'var(--gold)' : 'transparent') + ';color:' + (active ? '#000' : 'var(--text-dim)') + ';border:1px solid var(--border2);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px">Style ' + sv + '</button>';
+    }
+    h += '</div>';
+  } else {
+    h += '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">' + name + '</div></div>';
+  }
+  
   if (d.abilities && d.abilities.length) {
     h += '<div class="modal-section">Faction Abilities</div>';
     d.abilities.forEach(function(a) {
