@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.091 -->
+<!-- TI4 Tracker 2.092 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.091';
+var VERSION = '2.092';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -652,7 +652,12 @@ const FACTION_DATA = {
     }
   },
   "The Barony of Letnev": {
-    home:"Arc Prime / Wren-Mu", commodities:3, source:"base", difficulty:"Low",
+    home:"Arc Prime / Wren-Mu", commodities:2, source:"base", difficulty:"Low",
+    start:{
+      units:"1 Dreadnought, 1 Carrier, 1 Destroyer, 1 Fighter, 3 Infantry, 1 Space Dock",
+      tech:"Antimass Deflectors, Plasma Scoring",
+      planets:"Arc Prime (4/0), Wren Terra (2/1)"
+    },
     abilities:[
       "MUNITIONS RESERVES: At the start of each round of space combat, you may spend 2 trade goods; if you do, re-roll any number of your dice during that combat round.",
       "ARMADA: The maximum number of non-fighter ships you can have in each system is equal to 2 more than the number of tokens in your fleet pool."
@@ -672,7 +677,12 @@ const FACTION_DATA = {
     }
   },
   "The Clan of Saar": {
-    home:"Lisis II / Ragh", commodities:3, source:"base", difficulty:"High",
+    home:"Lisis II / Ragh", commodities:3, source:"base", difficulty:"Moderate",
+    start:{
+      units:"2 Carriers, 1 Cruiser, 2 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Antimass Deflectors",
+      planets:"Lisis II (1/0), Ragh (2/1)"
+    },
     abilities:[
       "SCAVENGE: After you gain control of a planet, gain 1 trade good.",
       "NOMADIC: You can score objectives even if you do not control the planets in your home system."
@@ -695,6 +705,11 @@ const FACTION_DATA = {
   },
   "The Embers of Muaat": {
     home:"Muaat", commodities:4, source:"base", difficulty:"High",
+    start:{
+      units:"1 War Sun, 2 Fighters, 4 Infantry, 1 Space Dock",
+      tech:"Plasma Scoring",
+      planets:"Muaat (4/1)"
+    },
     abilities:[
       "STAR FORGE: ACTION: Spend 1 token from your strategy pool to place either 2 fighters or 1 destroyer from your reinforcements in a system that contains 1 or more of your war suns.",
       "GASHLAI PHYSIOLOGY: Your ships can move through supernovas."
@@ -2678,6 +2693,7 @@ function difficultyColor(d) {
   var s = String(d).toLowerCase();
   if (s.indexOf('very high') >= 0) return '#e74c3c'; // red
   if (s.indexOf('high') >= 0) return '#e67e22';      // orange
+  if (s.indexOf('moderate') >= 0) return '#f1c40f';  // yellow
   if (s.indexOf('medium') >= 0) return '#f1c40f';    // yellow
   if (s.indexOf('low') >= 0) return '#7cd957';       // light green
   if (s.indexOf('easy') >= 0) return '#27ae60';      // green
