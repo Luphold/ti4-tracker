@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.102 -->
+<!-- TI4 Tracker 2.103 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.102';
+var VERSION = '2.103';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -801,7 +801,7 @@ const FACTION_DATA = {
     ],
     flagship:"Hil-Colish — Cost 8, Combat 5, Move 1, Capacity 3, SUSTAIN DAMAGE. This ship's system contains a delta wormhole. During movement, this ship may move before or after your other ships.",
     units:[],
-    breakthrough:"Each wormhole in a system that contains your ships gains PRODUCTION 1 as if it were a unit you control. Reduce the combined cost of units you produce in systems that contain wormholes by 1 for each wormhole in that system.",
+    breakthrough:{prereqs:["b","y"], text:"Each wormhole in a system that contains your ships gains PRODUCTION 1 as if it were a unit you control. Reduce the combined cost of units you produce in systems that contain wormholes by 1 for each wormhole in that system."},
     mech:"Icarus Drive — Cost 2, Combat 6, SUSTAIN DAMAGE. After any player activates a system: you may remove this unit from the game board to place or move a Creuss wormhole token into this system.",
     leaders:{
       agent:"Emissary Taivra — After a player activates a system that contains a non-delta wormhole: You may exhaust this card; if you do, that system is adjacent to all other systems that contain a wormhole during this tactical action.",
@@ -828,7 +828,7 @@ const FACTION_DATA = {
       "Super-Dreadnought I — Dreadnought. Cost 4, Combat 5, Move 1, Capacity 2, SUSTAIN DAMAGE, BOMBARDMENT 5.",
       "Super-Dreadnought II — Dreadnought. Cost 4, Combat 4, Move 2, Capacity 2, SUSTAIN DAMAGE, BOMBARDMENT 4. This unit cannot be destroyed by \"Direct Hit\" action cards."
     ],
-    breakthrough:"When you gain control of a planet, place infantry from your reinforcements equal to that planet's influence value on that planet.",
+    breakthrough:{prereqs:["r","g"], text:"When you gain control of a planet, place infantry from your reinforcements equal to that planet's influence value on that planet."},
     mech:"Tyrant — Cost 2, Combat 6, SUSTAIN DAMAGE. BOMBARDMENT 5. After this unit is destroyed, place it in your home system's space area.",
     leaders:{
       agent:"I48S — After a player activates a system: You may exhaust this card to allow that player to replace 1 of their infantry in the active system with 1 mech from their reinforcements.",
@@ -853,7 +853,10 @@ const FACTION_DATA = {
     ],
     flagship:"Fourth Moon — Cost 8, Combat 7(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. Other players' ships in this system cannot use SUSTAIN DAMAGE.",
     units:[],
-    breakthrough:"If you have the Cruiser II unit upgrade technology, flip this card and place it on top of Cruiser II.",
+    breakthrough:[
+      {prereqs:["y","g"], text:"If you have the Cruiser II unit upgrade technology, flip this card and place it on top of Cruiser II."},
+      {prereqs:["g","y"], text:"Cost 2, Combat 6, Move 3, Capacity 2. If the active system contains another player's non-fighter ships, this unit can move through systems that contain other players' ships."}
+    ],
     mech:"Moll Terminus — Cost 2, Combat 6, SUSTAIN DAMAGE. Other players' ground forces on this planet cannot use SUSTAIN DAMAGE.",
     leaders:{
       agent:"Suffi An — After the PILLAGE faction ability is used against another player: You may exhaust this card; if you do, you and that player each draw 1 action card.",
@@ -880,7 +883,7 @@ const FACTION_DATA = {
       "Hybrid Crystal Fighter I — Fighter. Cost 1×2, Combat 8.",
       "Hybrid Crystal Fighter II — Fighter. Cost 1×2, Combat 7. This unit may move without being transported. Each fighter in excess of your ships' capacity counts as 1/2 of a ship against your fleet pool."
     ],
-    breakthrough:"When you would resolve the secondary ability of another player's strategy card, you may give them a promissory note to resolve it without spending a command token.",
+    breakthrough:{prereqs:["r","g"], text:"When you would resolve the secondary ability of another player's strategy card, you may give them a promissory note to resolve it without spending a command token."},
     mech:"Iconoclast — Cost 2, Combat 6, SUSTAIN DAMAGE. During combat against an opponent who has at least 1 relic fragment, apply +2 to the results of this unit's combat rolls.",
     leaders:{
       agent:"Z'eu — After any player's command token is placed in a system: You may exhaust this card to return that token to that player's reinforcements.",
@@ -906,7 +909,7 @@ const FACTION_DATA = {
     ],
     flagship:"The Alastor — Cost 8, Combat 9(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. At the start of a space combat, choose any number of your ground forces in this system to participate in that combat as if they were ships.",
     units:[],
-    breakthrough:"When you would gain another player's technology using one of your faction abilities, you may instead place one of your \"Z\" assimilator tokens on that player's faction sheet. Your flagship gains the text abilities of that faction's flagship in addition to its own.",
+    breakthrough:{prereqs:[], text:"When you would gain another player's technology using one of your faction abilities, you may instead place one of your \"Z\" assimilator tokens on that player's faction sheet. Your flagship gains the text abilities of that faction's flagship in addition to its own."},
     mech:"Mordred — Cost 2, Combat 6, SUSTAIN DAMAGE. During combat against an opponent who has an \"X\" or \"Y\" token on 1 or more of their technologies, apply +2 to the result of each of this unit's combat rolls.",
     leaders:{
       agent:"Nekro Malleon — During the action phase: You may exhaust this card to choose a player; that player may discard 1 action card or spend 1 command token from their command sheet to gain 2 trade goods.",
@@ -932,7 +935,7 @@ const FACTION_DATA = {
       "Exotrireme I — Dreadnought. Cost 4, Combat 5, Move 1, Capacity 1, SUSTAIN DAMAGE, BOMBARDMENT 4(×2).",
       "Exotrireme II — Dreadnought. Cost 4, Combat 5, Move 2, Capacity 1, SUSTAIN DAMAGE, BOMBARDMENT 4(×2). This unit cannot be destroyed by \"Direct Hit\" action cards. After a round of space combat, you may destroy this unit to destroy up to 2 ships in this system."
     ],
-    breakthrough:"After you win a combat, either gain 1 command token or research a unit upgrade technology.",
+    breakthrough:{prereqs:["b","r"], text:"After you win a combat, either gain 1 command token or research a unit upgrade technology."},
     mech:"Valkyrie Exoskeleton — Cost 2, Combat 6, SUSTAIN DAMAGE. After this unit uses its SUSTAIN DAMAGE ability during Ground Combat, it produces 1 hit against your opponent's ground forces on this planet.",
     leaders:{
       agent:"T'ro — At the end of a player's tactical action: You may exhaust this card; if you do, that player may place 2 infantry from their reinforcements on a planet they control in the active system.",
@@ -958,7 +961,7 @@ const FACTION_DATA = {
     ],
     flagship:"J.N.S. Hylarim — Cost 8, Combat 6(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. When making combat rolls for this ship, each result of 9 or 10, before applying modifiers, produces 2 additional hits.",
     units:[],
-    breakthrough:"When you research technology using the \"Technology\" strategy card, you may exhaust a planet that has a technology speciality instead of spending resources; if you do you must research a technology of that colour.",
+    breakthrough:{prereqs:["y","g"], text:"When you research technology using the \"Technology\" strategy card, you may exhaust a planet that has a technology speciality instead of spending resources; if you do you must research a technology of that colour."},
     mech:"Shield Paling — Cost 2, Combat 6, SUSTAIN DAMAGE. Your infantry on this planet are not affected by your FRAGILE faction ability.",
     leaders:{
       agent:"Doctor Sucaban — When a player spends resources to research: You may exhaust this card to allow that player to remove any number of their infantry from the game board. For each unit removed, reduce the resources spent by 1.",
@@ -983,7 +986,7 @@ const FACTION_DATA = {
     ],
     flagship:"Salai Sai Corian — Cost 8, Combat 7, Move 1, Capacity 3, SUSTAIN DAMAGE. When this unit makes a combat roll, it rolls a number of dice equal to the number of your opponent's non-fighter ships in this system.",
     units:[],
-    breakthrough:"Apply +1 to the results of each of your unit's combat rolls for each \"Support for the Throne\" in your opponent's play area. After you activate a system that contains a legendary planet, apply +1 to the move value of 1 of your ships during this tactical action.",
+    breakthrough:{prereqs:["b","r"], text:"Apply +1 to the results of each of your unit's combat rolls for each \"Support for the Throne\" in your opponent's play area. After you activate a system that contains a legendary planet, apply +1 to the move value of 1 of your ships during this tactical action."},
     mech:"Reclaimer — Cost 2, Combat 6, SUSTAIN DAMAGE. After you resolve a tactical action where you gained control of this planet, you may place 1 PDS or 1 Space Dock from your reinforcements on this planet.",
     leaders:{
       agent:"Berekar Berekon — When 1 or more of a player's units use PRODUCTION: You may exhaust this card to reduce the combined cost of the produced units by 2.",
@@ -1008,7 +1011,7 @@ const FACTION_DATA = {
     ],
     flagship:"Loncara Ssodu — Cost 8, Combat 7(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. SPACE CANNON 5(×3). You may use this unit's SPACE CANNON against ships that are in adjacent systems.",
     units:[],
-    breakthrough:"You can spend influence as if it were resources. You can spend resources as if it were influence.",
+    breakthrough:{prereqs:["y","g"], text:"You can spend influence as if it were resources. You can spend resources as if it were influence."},
     mech:"Indomitus — Cost 2, Combat 6, SUSTAIN DAMAGE, SPACE CANNON 8. When this unit uses SPACE CANNON, hits may be assigned to ships in adjacent systems.",
     leaders:{
       agent:"Ggrocuto Rinn — ACTION: Exhaust this card to ready any planet; if that planet is in a system that is adjacent to a planet you control, you may remove 1 infantry from that planet and return it to its reinforcements.",
@@ -1033,7 +1036,7 @@ const FACTION_DATA = {
     ],
     flagship:"Van Hauge — Cost 8, Combat 9(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. When this ship is destroyed, destroy all ships in this system.",
     units:[],
-    breakthrough:"When you gain this card or score a public objective, gain the alliance ability of a random, unused faction.",
+    breakthrough:{prereqs:["y","g"], text:"When you gain this card or score a public objective, gain the alliance ability of a random, unused faction."},
     mech:"Moyin's Ashes — Cost 2, Combat 6, SUSTAIN DAMAGE. DEPLOY: When you use your INDOCTRINATION faction ability, you may spend 1 additional influence to replace your opponent's unit with 1 mech instead of 1 infantry.",
     leaders:{
       agent:"Brother Milor — ACTION: After a player's unit is destroyed during combat: You may exhaust this card to allow that player to place 2 fighters in the destroyed unit's system if it was a ship, or 2 infantry on its planet if it was a ground force.",
@@ -1059,7 +1062,7 @@ const FACTION_DATA = {
     ],
     flagship:"Y'sia Y'ssrila — Cost 8, Combat 5(×2), Move 2, Capacity 3, SUSTAIN DAMAGE. This ship can move through systems that contain other player's ships.",
     units:[],
-    breakthrough:"You can allow other players to use your STALL TACTICS or SCHEMING faction abilities; when you do, you may resolve a transaction with that player. During the action phase, that transaction does not count against the once-per-player transactions limit for that turn.",
+    breakthrough:{prereqs:["y","g"], text:"You can allow other players to use your STALL TACTICS or SCHEMING faction abilities; when you do, you may resolve a transaction with that player. During the action phase, that transaction does not count against the once-per-player transactions limit for that turn."},
     mech:"Blackshade Infiltrator — Cost 2, Combat 6, SUSTAIN DAMAGE. DEPLOY: After you use your STALL TACTICS faction ability, you may place 1 mech on a planet you control.",
     leaders:{
       agent:"Ssruu — This card has the text ability of each other player's agent, even if that agent is exhausted.",
@@ -2941,24 +2944,26 @@ function _renderFactionBody(name, d, h) {
   // Breakthrough (between Faction Tech and Faction-Specific Units)
   if (d.breakthrough) {
     h += '<div class="modal-section">Breakthrough</div>';
-    var btObj = (typeof d.breakthrough === 'object') ? d.breakthrough : { text: d.breakthrough, prereqs: [] };
-    // Build prereq markers
-    var prereqHtml = '';
-    if (btObj.prereqs && btObj.prereqs.length) {
-      prereqHtml = '<span style="display:inline-flex;gap:4px;vertical-align:middle;margin-left:8px;align-items:center">';
-      btObj.prereqs.forEach(function(c, idx) {
-        if (idx > 0) {
-          prereqHtml += '<span style="color:var(--text-dim);font-size:11px;font-weight:600">&lt;-&gt;</span>';
-        }
-        var bg = c === 'y' ? '#d4ac0d' :
-                 c === 'g' ? '#27ae60' :
-                 c === 'b' ? '#2980b9' :
-                 c === 'r' ? '#e74c3c' : '#888';
-        prereqHtml += '<span style="display:inline-block;width:12px;height:12px;background:' + bg + ';border:1px solid rgba(255,255,255,.3);border-radius:50%"></span>';
-      });
-      prereqHtml += '</span>';
-    }
-    h += '<div class="modal-text"><b style="color:#c98ee8">Breakthrough</b>' + prereqHtml + '<br>' + btObj.text + '</div>';
+    var btList = Array.isArray(d.breakthrough) ? d.breakthrough : [d.breakthrough];
+    btList.forEach(function(bt) {
+      var btObj = (typeof bt === 'object') ? bt : { text: bt, prereqs: [] };
+      var prereqHtml = '';
+      if (btObj.prereqs && btObj.prereqs.length) {
+        prereqHtml = '<span style="display:inline-flex;gap:4px;vertical-align:middle;margin-left:8px;align-items:center">';
+        btObj.prereqs.forEach(function(c, idx) {
+          if (idx > 0) {
+            prereqHtml += '<span style="color:var(--text-dim);font-size:11px;font-weight:600">&lt;-&gt;</span>';
+          }
+          var bg = c === 'y' ? '#d4ac0d' :
+                   c === 'g' ? '#27ae60' :
+                   c === 'b' ? '#2980b9' :
+                   c === 'r' ? '#e74c3c' : '#888';
+          prereqHtml += '<span style="display:inline-block;width:12px;height:12px;background:' + bg + ';border:1px solid rgba(255,255,255,.3);border-radius:50%"></span>';
+        });
+        prereqHtml += '</span>';
+      }
+      h += '<div class="modal-text"><b style="color:#c98ee8">Breakthrough</b>' + prereqHtml + '<br>' + btObj.text + '</div>';
+    });
   }
   // Faction-specific units (before flagship)
   if (d.units && d.units.length) {
