@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.107 -->
+<!-- TI4 Tracker 2.108 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -293,7 +293,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.107';
+var VERSION = '2.108';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1849,19 +1849,11 @@ function renderScore() {
   // Objectives board
   if (state.objectives && (state.objectives.stage1.length || state.objectives.stage2.length)) {
     h += '<div class="panel">';
-    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-    h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Public Objectives</div>';
-    if (isAdmin && !state.ended) {
-      var canAdd1 = (state.objectives.stage1.length < 6);
-      var canAdd2 = (state.objectives.stage2.length < 6);
-      h += '<div style="display:flex;gap:4px">';
-      h += '<button class="btn btn-sm" ' + (canAdd1 ? '' : 'disabled') + ' onclick="addExtraObjective(1)" style="font-size:10px;padding:4px 8px;opacity:' + (canAdd1 ? '1' : '0.4') + '">+ Stage 1</button>';
-      h += '<button class="btn btn-sm" ' + (canAdd2 ? '' : 'disabled') + ' onclick="addExtraObjective(2)" style="font-size:10px;padding:4px 8px;opacity:' + (canAdd2 ? '1' : '0.4') + '">+ Stage 2</button>';
-      h += '</div>';
-    }
-    h += '</div>';
-    h += renderObjectiveRow(state.objectives.stage1, 1);
-    h += renderObjectiveRow(state.objectives.stage2, 2);
+    h += '<div class="panel-title">Public Objectives</div>';
+    var canAdd1 = isAdmin && !state.ended && (state.objectives.stage1.length < 6);
+    var canAdd2 = isAdmin && !state.ended && (state.objectives.stage2.length < 6);
+    h += renderObjectiveRow(state.objectives.stage1, 1, canAdd1);
+    h += renderObjectiveRow(state.objectives.stage2, 2, canAdd2);
     if (state.publicSecrets && state.publicSecrets.length) {
       h += renderObjectiveRow(state.publicSecrets, 3);
     }
@@ -1937,40 +1929,43 @@ function renderScore() {
   el.innerHTML = h;
 }
 
-function renderObjectiveRow(objs, stage) {
-  var h = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:space-around">';
+function renderObjectiveRow(objs, stage, showAddBtn) {
+  var h = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:space-around;align-items:stretch">';
   objs.forEach(function(o, idx) {
     if (o.revealed) {
-      var accent = stage === 1 ? '#d97706' : stage === 2 ? '#3a8bce' : '#a569bd';  // stage 3 = purple (formerly secret)
+      var accent = stage === 1 ? '#d97706' : stage === 2 ? '#3a8bce' : '#a569bd';
       var vpText = stage === 2 ? 'VICTORY POINTS' : 'VICTORY POINT';
       var stageKey = stage === 1 ? 'stage1' : stage === 2 ? 'stage2' : 'publicSecret';
       var rgbAccent = stage === 1 ? '217,119,6' : stage === 2 ? '58,139,206' : '165,105,189';
-      // Score circles stacked on right edge of card
       var circles = '';
       (o.scoredBy || []).forEach(function(playerIdx) {
         var p = state.players[playerIdx];
         if (p) circles += '<div style="width:16px;height:16px;background:' + p.color + ';border:1px solid rgba(255,255,255,.3);margin:1px 0;border-radius:50%"></div>';
       });
       h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + rgbAccent + ',.3) inset;cursor:pointer;position:relative">';
-      // Title
       h += '<div style="font-weight:700;color:' + accent + ';font-size:9px;letter-spacing:.05em;padding:2px 0;line-height:1.1;min-height:22px;display:flex;align-items:center;justify-content:center">' + o.name + '</div>';
-      // Description (centered, takes most of card)
       h += '<div style="color:#dde4f0;font-size:8px;flex:1;display:flex;align-items:center;justify-content:center;padding:4px">' + o.desc + '</div>';
-      // VP circle at bottom — public secrets are worth 1 VP
       var vpNum = stage === 2 ? 2 : 1;
       h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:14px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 2px">' + vpNum + '</div>';
       h += '<div style="color:' + accent + ';font-size:7px;letter-spacing:.1em;font-weight:700">' + vpText + '</div>';
-      // Color circles stacked on right edge
       if (circles) {
         h += '<div style="position:absolute;right:-8px;top:4px;display:flex;flex-direction:column">' + circles + '</div>';
       }
       h += '</div>';
     } else {
-      // Face-down card: show card back image
       var img = stage === 1 ? 'card-back-stage1.png' : 'card-back-stage2.png';
       h += '<div style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:url(images/' + img + ') center/contain no-repeat"></div>';
     }
   });
+  // + Add Objective tile (same size as other cards)
+  if (showAddBtn) {
+    var addAccent = stage === 1 ? '#d97706' : '#3a8bce';
+    h += '<div onclick="addExtraObjective(' + stage + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:rgba(36,50,84,0.2);border:2px dashed ' + addAccent + ';border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:' + addAccent + ';font-weight:700;text-align:center;padding:6px">';
+    h += '<div style="font-size:28px;line-height:1">+</div>';
+    h += '<div style="font-size:9px;letter-spacing:.1em;margin-top:4px">ADD</div>';
+    h += '<div style="font-size:9px;letter-spacing:.1em">STAGE ' + stage + '</div>';
+    h += '</div>';
+  }
   h += '</div>';
   return h;
 }
@@ -3268,32 +3263,8 @@ function addExtraObjective(stage) {
     alert('No more stage ' + stage + ' objectives available.');
     return;
   }
-  // Picker modal so admin chooses
-  var h = '<div style="text-align:center;margin-bottom:8px"><div class="gold" style="font-size:16px">Choose Extra Stage ' + stage + ' Objective</div><div class="small dim" style="margin-top:4px">Will be added face-up</div></div>';
-  h += '<div style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto">';
-  available.forEach(function(o) {
-    var safeName = o.name.replace(/'/g, "\\'");
-    h += '<div onclick="confirmExtraObjective(' + stage + ',\'' + safeName + '\')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:rgba(36, 50, 84, 0.3)">';
-    h += '<div style="font-size:13px;font-weight:600">' + o.name + '</div>';
-    h += '<div class="small dim" style="font-size:10px;margin-top:2px">' + o.desc + '</div>';
-    h += '</div>';
-  });
-  h += '</div>';
-  h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
-  var modal = document.getElementById('modal');
-  modal.classList.add('modal-center');
-  modal.innerHTML = h;
-  modal.classList.add('open');
-  document.getElementById('modal-overlay').classList.add('open');
-}
-window.addExtraObjective = addExtraObjective;
-
-function confirmExtraObjective(stage, name) {
-  if (!isAdmin) return;
-  var stageKey = stage === 1 ? 'stage1' : 'stage2';
-  var pool = stage === 1 ? STAGE1_OBJECTIVES : STAGE2_OBJECTIVES;
-  var picked = pool.find(function(o) { return o.name === name; });
-  if (!picked) return;
+  // Random pick
+  var picked = available[Math.floor(Math.random() * available.length)];
   state.objectives[stageKey].push({
     name: picked.name,
     desc: picked.desc,
@@ -3302,11 +3273,10 @@ function confirmExtraObjective(stage, name) {
     extra: true
   });
   state.objectives.used.push(picked.name);
-  closeModal();
   pushState();
   renderScore();
 }
-window.confirmExtraObjective = confirmExtraObjective;
+window.addExtraObjective = addExtraObjective;
 
 // Common "Other" objective sources (1 VP unless noted)
 // once: can only be scored once total
