@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.097 -->
+<!-- TI4 Tracker 2.098 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.097';
+var VERSION = '2.098';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -2872,7 +2872,110 @@ function renderFactionHeader(name, d) {
   return h;
 }
 
+function showFactionCombined(fullName, nameA, dA, nameB, dB) {
+  // Remember which form to show; default = first (e.g. Firmament)
+  var which = window._factionShowSecond ? 'B' : 'A';
+  var activeName = (which === 'A') ? nameA : nameB;
+  var d = (which === 'A') ? dA : dB;
+  var otherName = (which === 'A') ? nameB : nameA;
+  
+  var h = '';
+  // Combined banner with form-switcher
+  h += '<div style="text-align:center;margin-bottom:6px"><div class="gold" style="font-size:14px;letter-spacing:.1em">' + fullName + '</div></div>';
+  h += '<div style="display:flex;gap:4px;justify-content:center;margin-bottom:10px">';
+  h += '<button onclick="toggleFactionForm(\'' + fullName.replace(/'/g, "\\'") + '\',false)" style="background:' + (which === 'A' ? 'var(--gold)' : 'transparent') + ';color:' + (which === 'A' ? '#000' : 'var(--text-dim)') + ';border:1px solid var(--border2);border-radius:4px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:600">' + nameA + '</button>';
+  h += '<button onclick="toggleFactionForm(\'' + fullName.replace(/'/g, "\\'") + '\',true)" style="background:' + (which === 'B' ? 'var(--gold)' : 'transparent') + ';color:' + (which === 'B' ? '#000' : 'var(--text-dim)') + ';border:1px solid var(--border2);border-radius:4px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:600">' + nameB + '</button>';
+  h += '</div>';
+  
+  if (d.start && d.start.units) {
+    h += renderFactionHeader(activeName, d);
+  } else {
+    h += '<div style="text-align:center;margin-bottom:12px"><div class="gold" style="font-size:18px">' + activeName + '</div></div>';
+  }
+  
+  // Abilities (always show both sides combined for context — the player needs to know both)
+  h += '<div class="modal-section">' + activeName + ' Abilities</div>';
+  (d.abilities || []).forEach(function(a) {
+    var ci = a.indexOf(':');
+    if (ci > 0) {
+      h += '<div class="modal-text"><b style="color:#c98ee8">' + a.slice(0, ci) + ':</b> ' + a.slice(ci+1).trim() + '</div>';
+    } else {
+      h += '<div class="modal-text">' + a + '</div>';
+    }
+  });
+  
+  // Promissory
+  if (d.promissory) {
+    h += '<div class="modal-section">Promissory Note</div>';
+    h += '<div class="modal-text">' + d.promissory + '</div>';
+  }
+  // Flagship
+  if (d.flagship) {
+    h += '<div class="modal-section">Flagship</div>';
+    h += '<div class="modal-text">' + d.flagship + '</div>';
+  }
+  // Units
+  if (d.units && d.units.length) {
+    h += '<div class="modal-section">Faction Units</div>';
+    d.units.forEach(function(u) { h += '<div class="modal-text">' + u + '</div>'; });
+  }
+  // Mech
+  if (d.mech) {
+    h += '<div class="modal-section">Mech</div>';
+    h += '<div class="modal-text">' + d.mech + '</div>';
+  }
+  // Breakthrough
+  if (d.breakthrough) {
+    h += '<div class="modal-section">Breakthrough</div>';
+    h += '<div class="modal-text">' + d.breakthrough + '</div>';
+  }
+  // Faction tech
+  if (d.factionTechs && d.factionTechs.length) {
+    h += '<div class="modal-section">Faction Technologies</div>';
+    d.factionTechs.forEach(function(ft) {
+      h += '<div class="modal-text"><b style="color:#c9a84c">' + ft.name + '</b> — ' + ft.text + '</div>';
+    });
+  }
+  // Leaders
+  if (d.leaders) {
+    h += '<div class="modal-section">Leaders</div>';
+    if (d.leaders.agent) h += '<div class="modal-text"><b style="color:#5db8ff">Agent:</b> ' + d.leaders.agent + '</div>';
+    if (d.leaders.commander) h += '<div class="modal-text"><b style="color:#5db8ff">Commander:</b> ' + d.leaders.commander + '</div>';
+    if (d.leaders.hero) h += '<div class="modal-text"><b style="color:#5db8ff">Hero:</b> ' + d.leaders.hero + '</div>';
+  }
+  
+  // Tip: switching note
+  h += '<div class="small dim center mt-16" style="padding:8px;border-top:1px solid var(--border);font-style:italic">Use the buttons above to view ' + otherName + '\'s data — same player, different form.</div>';
+  
+  h += '<button class="btn btn-full mt-16" onclick="closeModal()">Close</button>';
+  
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function toggleFactionForm(fullName, showSecond) {
+  window._factionShowSecond = !!showSecond;
+  showFaction(fullName);
+}
+window.toggleFactionForm = toggleFactionForm;
+window.showFactionCombined = showFactionCombined;
+
 function showFaction(name) {
+  // Handle combined factions like "The Firmament / The Obsidian" — same player, different starting configs
+  if (name.indexOf(' / ') > 0 && !FACTION_DATA[name]) {
+    var parts = name.split(' / ');
+    var a = FACTION_DATA[parts[0]];
+    var b = FACTION_DATA[parts[1]];
+    if (a && b) {
+      showFactionCombined(name, parts[0], a, parts[1], b);
+      return;
+    }
+  }
+  // Reset combined-form toggle for non-combined views
+  window._factionShowSecond = false;
   var d = FACTION_DATA[name];
   if (!d) return;
   var hasFullData = d.start && d.start.units;
