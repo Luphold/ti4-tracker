@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.105 -->
+<!-- TI4 Tracker 2.106 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -234,6 +234,10 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
         <span>👤 Player claim / 💬 Messaging</span>
         <input type="checkbox" id="toggle-claim" checked style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
       </label>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;padding:4px 0">
+        <span>🃏 Reveal all objectives at start</span>
+        <input type="checkbox" id="toggle-revealAll" style="width:auto;-webkit-appearance:checkbox;cursor:pointer">
+      </label>
     </div>
   </div>
   <div class="panel">
@@ -289,7 +293,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.105';
+var VERSION = '2.106';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -1494,7 +1498,7 @@ var state = {
   // How many strategy cards each player picks (1 default, 2 for ≤4 player games if chosen)
   strategiesPerPlayer: 1,
   // Feature toggles
-  features: { strategy: true, tech: true, claim: true },
+  features: { strategy: true, tech: true, claim: true, revealAll: false },
   // Player slot claims: { playerIdx: username } - who is "playing" each slot
   claims: {}
 };
@@ -1845,9 +1849,22 @@ function renderScore() {
   // Objectives board
   if (state.objectives && (state.objectives.stage1.length || state.objectives.stage2.length)) {
     h += '<div class="panel">';
-    h += '<div class="panel-title">Public Objectives</div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    h += '<div style="font-size:11px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase">Public Objectives</div>';
+    if (isAdmin && !state.ended) {
+      var canAdd1 = (state.objectives.stage1.length < 6);
+      var canAdd2 = (state.objectives.stage2.length < 6);
+      h += '<div style="display:flex;gap:4px">';
+      h += '<button class="btn btn-sm" ' + (canAdd1 ? '' : 'disabled') + ' onclick="addExtraObjective(1)" style="font-size:10px;padding:4px 8px;opacity:' + (canAdd1 ? '1' : '0.4') + '">+ Stage 1</button>';
+      h += '<button class="btn btn-sm" ' + (canAdd2 ? '' : 'disabled') + ' onclick="addExtraObjective(2)" style="font-size:10px;padding:4px 8px;opacity:' + (canAdd2 ? '1' : '0.4') + '">+ Stage 2</button>';
+      h += '</div>';
+    }
+    h += '</div>';
     h += renderObjectiveRow(state.objectives.stage1, 1);
     h += renderObjectiveRow(state.objectives.stage2, 2);
+    if (state.publicSecrets && state.publicSecrets.length) {
+      h += renderObjectiveRow(state.publicSecrets, 3);
+    }
     h += '</div>';
   }
   
@@ -1874,6 +1891,9 @@ function renderScore() {
       h += '<div style="font-size:12px;font-weight:600;color:' + p.color + ';text-shadow:-0.5px -0.5px 0 rgba(255,255,255,.3), 0.5px -0.5px 0 rgba(255,255,255,.3), -0.5px 0.5px 0 rgba(255,255,255,.3), 0.5px 0.5px 0 rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</div>';
       h += '<div style="font-size:9px;color:' + p.color + ';letter-spacing:.08em;opacity:.85">' + p.name + ' · ' + s.type + '</div>';
       h += '</div>';
+      if (isAdmin && !state.ended) {
+        h += '<button onclick="makeSecretPublic(' + idx + ')" style="background:none;border:1px solid var(--gold);color:var(--gold);font-size:10px;cursor:pointer;padding:3px 8px;border-radius:4px;white-space:nowrap">Make Public</button>';
+      }
       if (isAdmin) {
         h += '<button onclick="removeSecret(' + idx + ')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
       }
@@ -1921,22 +1941,24 @@ function renderObjectiveRow(objs, stage) {
   var h = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:space-around">';
   objs.forEach(function(o, idx) {
     if (o.revealed) {
-      var accent = stage === 1 ? '#d97706' : '#3a8bce';
-      var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
-      var stageKey = 'stage' + stage;
+      var accent = stage === 1 ? '#d97706' : stage === 2 ? '#3a8bce' : '#a569bd';  // stage 3 = purple (formerly secret)
+      var vpText = stage === 2 ? 'VICTORY POINTS' : 'VICTORY POINT';
+      var stageKey = stage === 1 ? 'stage1' : stage === 2 ? 'stage2' : 'publicSecret';
+      var rgbAccent = stage === 1 ? '217,119,6' : stage === 2 ? '58,139,206' : '165,105,189';
       // Score circles stacked on right edge of card
       var circles = '';
       (o.scoredBy || []).forEach(function(playerIdx) {
         var p = state.players[playerIdx];
         if (p) circles += '<div style="width:16px;height:16px;background:' + p.color + ';border:1px solid rgba(255,255,255,.3);margin:1px 0;border-radius:50%"></div>';
       });
-      h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.3) inset;cursor:pointer;position:relative">';
+      h += '<div onclick="openObjective(\'' + stageKey + '\',' + idx + ')" style="flex:1;min-width:0;max-width:120px;aspect-ratio:2/3;background:#0a1525;border:2px solid ' + accent + ';border-radius:6px;padding:6px;font-size:9px;line-height:1.2;text-align:center;display:flex;flex-direction:column;box-shadow:0 0 8px rgba(' + rgbAccent + ',.3) inset;cursor:pointer;position:relative">';
       // Title
       h += '<div style="font-weight:700;color:' + accent + ';font-size:9px;letter-spacing:.05em;padding:2px 0;line-height:1.1;min-height:22px;display:flex;align-items:center;justify-content:center">' + o.name + '</div>';
       // Description (centered, takes most of card)
       h += '<div style="color:#dde4f0;font-size:8px;flex:1;display:flex;align-items:center;justify-content:center;padding:4px">' + o.desc + '</div>';
-      // VP circle at bottom
-      h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:14px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 2px">' + stage + '</div>';
+      // VP circle at bottom — public secrets are worth 1 VP
+      var vpNum = stage === 2 ? 2 : 1;
+      h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:14px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 2px">' + vpNum + '</div>';
       h += '<div style="color:' + accent + ';font-size:7px;letter-spacing:.1em;font-weight:700">' + vpText + '</div>';
       // Color circles stacked on right edge
       if (circles) {
@@ -2063,13 +2085,15 @@ function renderSetup() {
   
   document.getElementById('vp-goal').value = state.vpGoal;
   document.getElementById('vp-goal').disabled = state.started || readonly;
-  var feat = state.features || { strategy: true, tech: true, claim: true };
+  var feat = state.features || { strategy: true, tech: true, claim: true, revealAll: false };
   var togS = document.getElementById('toggle-strategy');
   var togT = document.getElementById('toggle-tech');
   var togC = document.getElementById('toggle-claim');
+  var togR = document.getElementById('toggle-revealAll');
   if (togS) { togS.checked = feat.strategy !== false; togS.disabled = state.started || readonly; }
   if (togT) { togT.checked = feat.tech !== false; togT.disabled = state.started || readonly; }
   if (togC) { togC.checked = feat.claim !== false; togC.disabled = state.started || readonly; }
+  if (togR) { togR.checked = feat.revealAll === true; togR.disabled = state.started || readonly; }
   document.getElementById('btn-add-player').disabled = state.started || readonly || state.players.length >= 8;
   document.getElementById('btn-add-player').style.display = readonly ? 'none' : '';
   document.getElementById('btn-add-player').textContent = state.players.length >= 8 ? 'Max 8 players' : '+ Add Player (' + state.players.length + '/8)';
@@ -3064,24 +3088,30 @@ function closeModal() {
 // Track which objective is being shown in the enlarged view
 var currentObjective = null; // { stageKey, idx }
 
+function getObjectiveByStage(stageKey, idx) {
+  if (stageKey === 'publicSecret') return (state.publicSecrets || [])[idx];
+  return state.objectives[stageKey][idx];
+}
+
 function openObjective(stageKey, idx) {
-  var o = state.objectives[stageKey][idx];
+  var o = getObjectiveByStage(stageKey, idx);
   if (!o) return;
   currentObjective = { stageKey: stageKey, idx: idx };
-  var stage = stageKey === 'stage1' ? 1 : 2;
-  var accent = stage === 1 ? '#d97706' : '#3a8bce';
-  var vpText = stage === 1 ? 'VICTORY POINT' : 'VICTORY POINTS';
+  var stage = stageKey === 'stage1' ? 1 : stageKey === 'stage2' ? 2 : 3;
+  var accent = stage === 1 ? '#d97706' : stage === 2 ? '#3a8bce' : '#a569bd';
+  var vpText = stage === 2 ? 'VICTORY POINTS' : 'VICTORY POINT';
+  var rgbAccent = stage === 1 ? '217,119,6' : stage === 2 ? '58,139,206' : '165,105,189';
+  var vpNum = stage === 2 ? 2 : 1;
   
-  // Card-shaped enlarged display: scale ~2.5x of the small card (120px → 280px wide, with same 2:3 aspect)
-  // Width ~280px, height ~420px
+  // Card-shaped enlarged display
   var h = '<div style="position:relative;width:100%;max-width:280px;margin:0 auto">';
-  h += '<div style="background:#0a1525;border:3px solid ' + accent + ';border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;aspect-ratio:2/3;box-shadow:0 0 24px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.5) inset, 0 0 32px rgba(' + (stage===1?'217,119,6':'58,139,206') + ',.4)">';
+  h += '<div style="background:#0a1525;border:3px solid ' + accent + ';border-radius:10px;padding:16px;text-align:center;display:flex;flex-direction:column;aspect-ratio:2/3;box-shadow:0 0 24px rgba(' + rgbAccent + ',.5) inset, 0 0 32px rgba(' + rgbAccent + ',.4)">';
   // Title
   h += '<div style="font-weight:700;color:' + accent + ';font-size:18px;letter-spacing:.08em;padding:6px 0;line-height:1.2;min-height:50px;display:flex;align-items:center;justify-content:center">' + o.name + '</div>';
   // Description
   h += '<div style="color:#dde4f0;font-size:14px;flex:1;display:flex;align-items:center;justify-content:center;padding:8px;line-height:1.4">' + o.desc + '</div>';
   // VP badge at bottom
-  h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:28px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px">' + stage + '</div>';
+  h += '<div style="background:' + accent + ';color:#0a1525;font-weight:700;font-size:28px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 4px">' + vpNum + '</div>';
   h += '<div style="color:' + accent + ';font-size:10px;letter-spacing:.15em;font-weight:700">' + vpText + '</div>';
   h += '</div>';
   // Color circles stacked on right edge of enlarged card
@@ -3113,7 +3143,8 @@ function openObjective(stageKey, idx) {
   
   // Bottom buttons row
   h += '<div class="row mt-16" style="gap:8px">';
-  if (isAdmin) {
+  // Recycle only for regular public objectives
+  if (isAdmin && stageKey !== 'publicSecret') {
     h += '<button class="btn btn-sm" onclick="recycleObjective()" style="flex:0;color:var(--red);border-color:var(--red)" title="Replace with a new objective">♻</button>';
   }
   h += '<button class="btn" onclick="closeModal()" style="flex:1">Close</button>';
@@ -3131,7 +3162,7 @@ function openObjective(stageKey, idx) {
 
 function openScoreList() {
   if (!currentObjective) return;
-  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  var o = getObjectiveByStage(currentObjective.stageKey, currentObjective.idx);
   if (!o) return;
   
   var h = '<div style="text-align:center;margin-bottom:16px"><div class="gold" style="font-size:16px">Score Objective</div><div class="small dim mt-8">' + o.name + '</div></div>';
@@ -3154,30 +3185,28 @@ function openScoreList() {
 
 function scorePlayer(playerIdx) {
   if (!isAdmin || !currentObjective || state.ended) return;
-  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  var o = getObjectiveByStage(currentObjective.stageKey, currentObjective.idx);
   if (!o) return;
   if (!o.scoredBy) o.scoredBy = [];
   if (o.scoredBy.indexOf(playerIdx) >= 0) return;
   o.scoredBy.push(playerIdx);
-  // Add VP to player
-  var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
+  // Add VP to player (stage 2 = 2VP, stage 1 and publicSecret = 1VP)
+  var vpVal = currentObjective.stageKey === 'stage2' ? 2 : 1;
   state.players[playerIdx].vp = (state.players[playerIdx].vp || 0) + vpVal;
   logEvent('public', playerIdx, o.name, vpVal);
   pushState();
-  // Refresh modal and underlying board
   openObjective(currentObjective.stageKey, currentObjective.idx);
   renderScore();
 }
 
 function unscorePlayer(playerIdx) {
   if (!isAdmin || !currentObjective || state.ended) return;
-  var o = state.objectives[currentObjective.stageKey][currentObjective.idx];
+  var o = getObjectiveByStage(currentObjective.stageKey, currentObjective.idx);
   if (!o || !o.scoredBy) return;
   var pos = o.scoredBy.indexOf(playerIdx);
   if (pos < 0) return;
   o.scoredBy.splice(pos, 1);
-  // Remove VP from player
-  var vpVal = currentObjective.stageKey === 'stage1' ? 1 : 2;
+  var vpVal = currentObjective.stageKey === 'stage2' ? 2 : 1;
   state.players[playerIdx].vp = Math.max(0, (state.players[playerIdx].vp || 0) - vpVal);
   unlogEvent('public', playerIdx, o.name);
   pushState();
@@ -3225,6 +3254,59 @@ function recycleObjective() {
   openObjective(currentObjective.stageKey, currentObjective.idx);
   renderScore();
 }
+
+function addExtraObjective(stage) {
+  if (!isAdmin || state.ended) return;
+  var stageKey = stage === 1 ? 'stage1' : 'stage2';
+  if (state.objectives[stageKey].length >= 6) {
+    alert('You can only add 1 extra objective per stage.');
+    return;
+  }
+  var pool = stage === 1 ? STAGE1_OBJECTIVES : STAGE2_OBJECTIVES;
+  var available = pool.filter(function(p) { return state.objectives.used.indexOf(p.name) < 0; });
+  if (!available.length) {
+    alert('No more stage ' + stage + ' objectives available.');
+    return;
+  }
+  // Picker modal so admin chooses
+  var h = '<div style="text-align:center;margin-bottom:8px"><div class="gold" style="font-size:16px">Choose Extra Stage ' + stage + ' Objective</div><div class="small dim" style="margin-top:4px">Will be added face-up</div></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto">';
+  available.forEach(function(o) {
+    var safeName = o.name.replace(/'/g, "\\'");
+    h += '<div onclick="confirmExtraObjective(' + stage + ',\'' + safeName + '\')" style="padding:8px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:rgba(36, 50, 84, 0.3)">';
+    h += '<div style="font-size:13px;font-weight:600">' + o.name + '</div>';
+    h += '<div class="small dim" style="font-size:10px;margin-top:2px">' + o.desc + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  h += '<button class="btn btn-full mt-8" onclick="closeModal()">Cancel</button>';
+  var modal = document.getElementById('modal');
+  modal.classList.add('modal-center');
+  modal.innerHTML = h;
+  modal.classList.add('open');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+window.addExtraObjective = addExtraObjective;
+
+function confirmExtraObjective(stage, name) {
+  if (!isAdmin) return;
+  var stageKey = stage === 1 ? 'stage1' : 'stage2';
+  var pool = stage === 1 ? STAGE1_OBJECTIVES : STAGE2_OBJECTIVES;
+  var picked = pool.find(function(o) { return o.name === name; });
+  if (!picked) return;
+  state.objectives[stageKey].push({
+    name: picked.name,
+    desc: picked.desc,
+    revealed: true,
+    scoredBy: [],
+    extra: true
+  });
+  state.objectives.used.push(picked.name);
+  closeModal();
+  pushState();
+  renderScore();
+}
+window.confirmExtraObjective = confirmExtraObjective;
 
 // Common "Other" objective sources (1 VP unless noted)
 // once: can only be scored once total
@@ -3484,6 +3566,30 @@ function removeSecret(idx) {
   renderScore();
 }
 
+function makeSecretPublic(idx) {
+  if (!isAdmin || state.ended) return;
+  if (!state.secretsScored || !state.secretsScored[idx]) return;
+  var entry = state.secretsScored[idx];
+  // Find the secret's description from SECRET_OBJECTIVES
+  var secret = (typeof SECRET_OBJECTIVES !== 'undefined') ? SECRET_OBJECTIVES.find(function(s) { return s.name === entry.name; }) : null;
+  var desc = secret ? secret.desc : '';
+  if (!confirm('Convert this secret to a public objective?\n\n' + entry.name + '\n\n' + state.players[entry.playerIdx].name + ' keeps their VP from scoring it. The secret-counter for them decreases by 1. Other players can now score this as a public objective worth 1 VP.')) return;
+  
+  if (!state.publicSecrets) state.publicSecrets = [];
+  state.publicSecrets.push({
+    name: entry.name,
+    desc: desc,
+    revealed: true,
+    scoredBy: [entry.playerIdx],  // original scorer is already in
+    fromSecret: true
+  });
+  // Remove from secrets scored (this drops their secret count, but they keep the VP they already gained)
+  state.secretsScored.splice(idx, 1);
+  pushState();
+  renderScore();
+}
+window.makeSecretPublic = makeSecretPublic;
+
 window.openSecretPicker = openSecretPicker;
 window.chooseSecretPlayer = chooseSecretPlayer;
 window.confirmSecretScore = confirmSecretScore;
@@ -3670,10 +3776,11 @@ function doStartGame() {
     }
     p.vp = 0;
   });
-  // Pick 5 random stage 1 and 5 random stage 2 objectives, all face-down
+  // Pick 5 random stage 1 and 5 random stage 2 objectives, all face-down (unless revealAll feature is on)
+  var revealAll = (state.features && state.features.revealAll === true);
   state.objectives = {
-    stage1: shuffle(STAGE1_OBJECTIVES).slice(0, 5).map(function(o, i) { return { name: o.name, desc: o.desc, revealed: i < 2, scoredBy: [] }; }),
-    stage2: shuffle(STAGE2_OBJECTIVES).slice(0, 5).map(function(o) { return { name: o.name, desc: o.desc, revealed: false, scoredBy: [] }; }),
+    stage1: shuffle(STAGE1_OBJECTIVES).slice(0, 5).map(function(o, i) { return { name: o.name, desc: o.desc, revealed: revealAll || i < 2, scoredBy: [] }; }),
+    stage2: shuffle(STAGE2_OBJECTIVES).slice(0, 5).map(function(o) { return { name: o.name, desc: o.desc, revealed: revealAll, scoredBy: [] }; }),
     used: [] // tracks names already drawn/discarded so recycle doesn't repick
   };
   // Mark all initially-drawn objectives as used
@@ -3681,6 +3788,7 @@ function doStartGame() {
   state.objectives.stage2.forEach(function(o) { state.objectives.used.push(o.name); });
   state.secretsScored = [];
   state.otherScored = [];
+  state.publicSecrets = [];
   setNav('score');
   pushState();
   // Prompt admin to claim a slot if feature enabled
@@ -4447,7 +4555,7 @@ function newGame() {
 }
 
 function startFreshGame() {
-  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true, claim: true }, claims: {} };
+  state = { players: [], round: 1, vpGoal: 10, started: false, ended: false, winner: null, secretsScored: [], otherScored: [], publicSecrets: [], roundTimestamps: [], paused: false, pauseStarted: null, pausedDurationMs: 0, roundLog: [], strategies: {}, strategiesPerPlayer: 1, features: { strategy: true, tech: true, claim: true, revealAll: false }, claims: {} };
   // Generate a new room code so it doesn't conflict with the just-ended game
   roomCode = generateRoomCode();
   dbSet('settings', { k: 'lastRoom', v: roomCode });
@@ -4770,8 +4878,14 @@ document.getElementById('toggle-tech').addEventListener('change', function() {
   renderAll();
 });
 document.getElementById('toggle-claim').addEventListener('change', function() {
-  if (!state.features) state.features = { strategy: true, tech: true, claim: true };
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, revealAll: false };
   state.features.claim = this.checked;
+  if (isAdmin) pushState();
+  renderAll();
+});
+document.getElementById('toggle-revealAll').addEventListener('change', function() {
+  if (!state.features) state.features = { strategy: true, tech: true, claim: true, revealAll: false };
+  state.features.revealAll = this.checked;
   if (isAdmin) pushState();
   renderAll();
 });
