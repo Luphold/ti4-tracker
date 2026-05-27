@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.099 -->
+<!-- TI4 Tracker 2.100 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.099';
+var VERSION = '2.100';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -3511,9 +3511,13 @@ function pickColor(playerIdx, hex) {
 // =============================================================================
 function addPlayer() {
   if (!isAdmin || state.started || state.players.length >= 8) return;
+  // Pick first faction that isn't already taken
+  var taken = {};
+  state.players.forEach(function(p) { taken[p.faction] = true; });
+  var available = FACTIONS.find(function(f) { return !taken[f]; }) || FACTIONS[0];
   state.players.push({
     name: 'Player ' + (state.players.length + 1),
-    faction: FACTIONS[state.players.length % FACTIONS.length],
+    faction: available,
     color: null,
     vp: 0,
     techs: []
@@ -3537,10 +3541,24 @@ function removePlayer(i) {
 
 function updatePlayer(i, field, value) {
   if (!isAdmin) return;
-  // After game ends, nothing is editable
   if (state.ended) return;
-  // After game starts, only name is editable (not color/faction)
   if (state.started && field !== 'name') return;
+  
+  // If changing faction, check for duplicate and auto-swap
+  if (field === 'faction') {
+    var oldFaction = state.players[i].faction;
+    if (value !== oldFaction) {
+      var dupIdx = -1;
+      for (var k = 0; k < state.players.length; k++) {
+        if (k !== i && state.players[k].faction === value) { dupIdx = k; break; }
+      }
+      if (dupIdx >= 0) {
+        // Swap: give the other player the old faction this player had
+        state.players[dupIdx].faction = oldFaction;
+      }
+    }
+  }
+  
   state.players[i][field] = value;
   renderSetup();
   if (isAdmin) pushState();
