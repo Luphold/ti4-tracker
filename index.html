@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TI4 Tracker 2.101 -->
+<!-- TI4 Tracker 2.102 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -289,7 +289,7 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 // TI4 Tracker - Single file, no module systems, no IIFEs
 // =============================================================================
 
-var VERSION = '2.101';
+var VERSION = '2.102';
 document.getElementById('version-display').textContent = 'v' + VERSION;
 
 // Debug logger - silent unless panel toggled open
@@ -668,7 +668,7 @@ const FACTION_DATA = {
     ],
     flagship:"Arc Secundus — Cost 8, Combat 5(×2), Move 1, Capacity 3, SUSTAIN DAMAGE, BOMBARDMENT 5(×3). Other players' units in this system lose PLANETARY SHIELD. At the start of each space combat round, repair this ship.",
     units:[],
-    breakthrough:"Before you roll dice during space combat, apply +X to the results of 1 of your ship's rolls, where X is the number of ship types you have in the combat. During movement, your non-fighter ships' move values are equal to the highest move value amongst moving ships in the system they started in.",
+    breakthrough:{prereqs:["b","r"], text:"Before you roll dice during space combat, apply +X to the results of 1 of your ship's rolls, where X is the number of ship types you have in the combat. During movement, your non-fighter ships' move values are equal to the highest move value amongst moving ships in the system they started in."},
     mech:"Dunlain Reaper — Cost 2, Combat 6, SUSTAIN DAMAGE. DEPLOY: At the start of a round of ground combat: you may spend 2 resources to replace 1 of your infantry in that combat with 1 mech from your reinforcements.",
     leaders:{
       agent:"Viscount Unlenn — At the start of a Space Combat round: You may exhaust this card to choose 1 ship in the active system. That ship rolls 1 additional die during this combat round.",
@@ -695,7 +695,7 @@ const FACTION_DATA = {
       "Floating Factory I — Space Dock. Move 1, Capacity 4, PRODUCTION 5. Placed in space area, not on a planet. Can move and retreat as a ship. Destroyed if blockaded.",
       "Floating Factory II — Space Dock. Move 2, Capacity 5, PRODUCTION 7. Placed in space area, not on a planet. Can move and retreat as a ship. Destroyed if blockaded."
     ],
-    breakthrough:"ACTION: Exhaust this card and spend any amount of resources to choose a planet up to 2 systems away from an asteroid field that contains your ships; roll a number of dice equal to the amount spent, and assign 1 hit to a ground force on that planet for each roll of 4 or greater.",
+    breakthrough:{prereqs:["b","r"], text:"ACTION: Exhaust this card and spend any amount of resources to choose a planet up to 2 systems away from an asteroid field that contains your ships; roll a number of dice equal to the amount spent, and assign 1 hit to a ground force on that planet for each roll of 4 or greater."},
     mech:"Scavenger Zeta — Cost 2, Combat 6, SUSTAIN DAMAGE. DEPLOY: After you gain control of a planet, you may spend 1 trade good to place 1 mech on that planet.",
     leaders:{
       agent:"Captain Mendosa — After a player activates a system: You may exhaust this card to increase the move value of 1 of that player's ships to match the move value of the ship on the game board that has the highest move value.",
@@ -722,7 +722,7 @@ const FACTION_DATA = {
       "Prototype War Sun I — War Sun. Cost 12, Combat 3(×3), Move 1, Capacity 3, SUSTAIN DAMAGE, BOMBARDMENT 3(×3).",
       "Prototype War Sun II — War Sun. Cost 10, Combat 3(×3), Move 2, Capacity 6, SUSTAIN DAMAGE, BOMBARDMENT 3(×3). Other players' units in this system lose PLANETARY SHIELD."
     ],
-    breakthrough:"When you gain this card, place the Avernus planet token into a non-home system that is adjacent to a planet you control; gain control of and ready it. After you move 1 of your war suns out of or through Avernus's system and into a non-home system, you may move the Avernus token with it.",
+    breakthrough:{prereqs:["r","y"], text:"When you gain this card, place the Avernus planet token into a non-home system that is adjacent to a planet you control; gain control of and ready it. After you move 1 of your war suns out of or through Avernus's system and into a non-home system, you may move the Avernus token with it."},
     mech:"Ember Colossus — Cost 2, Combat 6, SUSTAIN DAMAGE. When you use your STAR FORGE ability in this system or an adjacent system, you may place 1 infantry from your reinforcements with this unit.",
     leaders:{
       agent:"Umbat — ACTION: Exhaust this card to choose a player; that player may produce up to 2 units that each have a cost of 4 or less in a system that contains one of their war suns or their flagship.",
@@ -748,7 +748,7 @@ const FACTION_DATA = {
     ],
     flagship:"Wrath of Kenara — Cost 8, Combat 7(×2), Move 1, Capacity 3, SUSTAIN DAMAGE. After you roll a die during a space combat in this system, you may spend 1 trade good to apply +1 to the result.",
     units:[],
-    breakthrough:"When you produce 3 or more non-fighter ships, place 1 command token from your reinforcements into your fleet pool.",
+    breakthrough:{prereqs:["r","y"], text:"When you produce 3 or more non-fighter ships, place 1 command token from your reinforcements into your fleet pool."},
     mech:"Pride of Kenara — Cost 2, Combat 6, SUSTAIN DAMAGE. This planet's card may be traded as part of a transaction. If you do, move all of your units from this planet to another planet you control.",
     leaders:{
       agent:"Carth of Golden Sands — During the action phase: You may exhaust this card to gain 2 commodities or replenish another player's commodities.",
@@ -775,7 +775,7 @@ const FACTION_DATA = {
       "Advanced Carrier I — Carrier. Cost 3, Combat 9, Move 2, Capacity 6.",
       "Advanced Carrier II — Carrier. Cost 3, Combat 9, Move 2, Capacity 8, SUSTAIN DAMAGE."
     ],
-    breakthrough:"When you produce a ship that has capacity, you may also produce any combination of ground forces or fighters up to that ship's capacity; they do not count against your PRODUCTION limit.",
+    breakthrough:{prereqs:["y","g"], text:"When you produce a ship that has capacity, you may also produce any combination of ground forces or fighters up to that ship's capacity; they do not count against your PRODUCTION limit."},
     mech:"ZS Thunderbolt M2 — Cost 2, Combat 6, SUSTAIN DAMAGE. DEPLOY: After you use your ORBITAL DROP ability, you may spend 3 resources to place 1 mech on that planet.",
     leaders:{
       agent:"Evelyn Delouis — At the start of a ground combat round: You may exhaust this card to choose 1 ground force in the active system; that ground force rolls 1 additional die during that combat round.",
@@ -2945,8 +2945,11 @@ function _renderFactionBody(name, d, h) {
     // Build prereq markers
     var prereqHtml = '';
     if (btObj.prereqs && btObj.prereqs.length) {
-      prereqHtml = '<span style="display:inline-flex;gap:3px;vertical-align:middle;margin-left:8px">';
-      btObj.prereqs.forEach(function(c) {
+      prereqHtml = '<span style="display:inline-flex;gap:4px;vertical-align:middle;margin-left:8px;align-items:center">';
+      btObj.prereqs.forEach(function(c, idx) {
+        if (idx > 0) {
+          prereqHtml += '<span style="color:var(--text-dim);font-size:11px;font-weight:600">&lt;-&gt;</span>';
+        }
         var bg = c === 'y' ? '#d4ac0d' :
                  c === 'g' ? '#27ae60' :
                  c === 'b' ? '#2980b9' :
